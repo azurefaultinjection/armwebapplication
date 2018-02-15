@@ -20,7 +20,7 @@ namespace ChaosExecuter.Trigger
         // TODO will be adding the CRON expression from the config.
         /// <summary>Every 5 mints </summary>
         //[FunctionName("TimelyTrigger")]
-        public static async void Run([TimerTrigger("0 */2 * * * *")]TimerInfo myTimer, [OrchestrationClient]
+        public static async void Run([TimerTrigger("0 */15 * * * *")]TimerInfo myTimer, [OrchestrationClient]
         DurableOrchestrationClient starter, TraceWriter log)
         {
             log.Info($"Timely trigger function execution started: {DateTime.UtcNow}");
