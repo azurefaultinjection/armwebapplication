@@ -26,7 +26,7 @@ namespace ChaosExecuter.Crawler
 
         // TODO: need to read the crawler timer from the configuration.
         [FunctionName("timercrawlerforvirtualmachinescaleset")]
-        public static async void Run([TimerTrigger("0 */2 * * * *")]TimerInfo myTimer, TraceWriter log)
+        public static void Run([TimerTrigger("0 */2 * * * *")]TimerInfo myTimer, TraceWriter log)
         {
             log.Info($"timercrawlerforvirtualmachinescaleset executed at: {DateTime.UtcNow}");
 
@@ -38,7 +38,7 @@ namespace ChaosExecuter.Crawler
                 return;
             }
 
-            await GetScaleSetsForResourceGroups(resourceGroupList, log, AzureClient.AzureSettings);
+            Task.Run(() => GetScaleSetsForResourceGroups(resourceGroupList, log, AzureClient.AzureSettings));
         }
 
         /// <summary>1. Iterate the resource groups to get the scale sets for individual resource group.
