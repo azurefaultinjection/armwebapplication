@@ -7,6 +7,7 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.WindowsAzure.Storage.Table;
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace ChaosExecuter.Trigger
 {
@@ -16,51 +17,79 @@ namespace ChaosExecuter.Trigger
         private static readonly AzureClient AzureClient = new AzureClient();
         private static readonly IStorageAccountProvider StorageProvider = new StorageAccountProvider();
 
+        // TODO will be adding the CRON expression from the config.
         /// <summary>Every 5 mints </summary>
-       [FunctionName("TimelyTrigger")]
+        //[FunctionName("TimelyTrigger")]
         public static async void Run([TimerTrigger("0 */2 * * * *")]TimerInfo myTimer, [OrchestrationClient]
         DurableOrchestrationClient starter, TraceWriter log)
         {
-            log.Info($"Chaos trigger function execution started: {DateTime.UtcNow}");
-            var resultForExecution = GetScheduledRulesForExecution();
-            if (resultForExecution == null)
+            log.Info($"Timely trigger function execution started: {DateTime.UtcNow}");
+            try
             {
-                log.Info($"Chaos trigger no entries to trigger");
-                return;
-            }
+                var scheduledRules = await GetScheduledRulesForExecution(log);
+                if (scheduledRules == null)
+                {
+                    log.Info($"Timely trigger no entries to trigger");
+                    return;
+                }
 
-            foreach (var result in resultForExecution)
+                // Start the executers parallely
+                await Task.WhenAll(GetListOfExecuters(scheduledRules, starter, log));
+            }
+            catch (Exception e)
             {
-                var partitionKey = result.PartitionKey.Replace("!", "/");
+                log.Error($"Timely trigger function threw exception:", e, "TimelyTrigger");
+            }
+        }
+
+        /// <summary>Get the list of the executer instances from the scheduled Rules data.</summary>
+        /// <param name="scheduledRules">List of the scheduled Rules from the scheduled table.</param>
+        /// <param name="starter">Durable Orchestration client instance, to start the executer function</param>
+        /// <param name="log">Trace writer to log the information/warning/errors.</param>
+        /// <returns>The list of task, which has the instances of the executers.</returns>
+        private static List<Task> GetListOfExecuters(IEnumerable<ScheduledRules> scheduledRules, DurableOrchestrationClient starter, TraceWriter log)
+        {
+            var tasks = new List<Task>();
+            foreach (var result in scheduledRules)
+            {
+                var partitionKey = result.PartitionKey.Replace(Delimeters.Exclamatory, Delimeters.ForwardSlash);
                 if (!Mappings.FunctionNameMap.ContainsKey(partitionKey))
                 {
                     continue;
                 }
 
-                string functionName = Mappings.FunctionNameMap[partitionKey];
-                log.Info($"Chaos trigger: invoking function: " + functionName);
-                await starter.StartNewAsync(functionName, result.TriggerData);
+                var functionName = Mappings.FunctionNameMap[partitionKey];
+                log.Info($"Timely trigger: invoking function: " + functionName);
+                tasks.Add(starter.StartNewAsync(functionName, result.TriggerData));
             }
 
-            log.Info($"Chaos trigger function execution ended: {DateTime.UtcNow}");
+            return tasks;
         }
 
         /// <summary>Get the scheduled rules for the chaos execution.</summary>
         /// <returns></returns>
-        private static IEnumerable<ScheduledRules> GetScheduledRulesForExecution()
+        private static async Task<IEnumerable<ScheduledRules>> GetScheduledRulesForExecution(TraceWriter log)
         {
-            var storageAccount = StorageProvider.CreateOrGetStorageAccount(AzureClient);
+            try
+            {
+                var storageAccount = StorageProvider.CreateOrGetStorageAccount(AzureClient);
 
-            var dateFilterByUtc = TableQuery.GenerateFilterConditionForDate("scheduledExecutionTime", QueryComparisons.GreaterThanOrEqual,
-                  DateTimeOffset.UtcNow);
+                var dateFilterByUtc = TableQuery.GenerateFilterConditionForDate("scheduledExecutionTime", QueryComparisons.GreaterThanOrEqual,
+                    DateTimeOffset.UtcNow);
 
-            var dateFilterByFrequency = TableQuery.GenerateFilterConditionForDate("scheduledExecutionTime", QueryComparisons.LessThanOrEqual,
-                  DateTimeOffset.UtcNow.AddMinutes(AzureClient.AzureSettings.Chaos.TriggerFrequency));
+                var dateFilterByFrequency = TableQuery.GenerateFilterConditionForDate("scheduledExecutionTime", QueryComparisons.LessThanOrEqual,
+                    DateTimeOffset.UtcNow.AddMinutes(AzureClient.AzureSettings.Chaos.TriggerFrequency));
 
-            var filter = TableQuery.CombineFilters(dateFilterByUtc, TableOperators.And, dateFilterByFrequency);
-            var scheduledQuery = new TableQuery<ScheduledRules>().Where(filter);
+                var filter = TableQuery.CombineFilters(dateFilterByUtc, TableOperators.And, dateFilterByFrequency);
+                var scheduledQuery = new TableQuery<ScheduledRules>().Where(filter);
 
-           return StorageProvider.GetEntities(scheduledQuery, storageAccount, AzureClient.AzureSettings.ScheduledRulesTable);
+                return await StorageProvider.GetEntitiesAsync(scheduledQuery, storageAccount, AzureClient.AzureSettings.ScheduledRulesTable);
+            }
+            catch (Exception e)
+            {
+                log.Error($"TimerTrigger function threw exception", e, "GetScheduledRulesForExecution");
+                throw;
+            }
         }
     }
 }
