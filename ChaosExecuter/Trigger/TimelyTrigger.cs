@@ -26,7 +26,7 @@ namespace ChaosExecuter.Trigger
             log.Info($"Timely trigger function execution started: {DateTime.UtcNow}");
             try
             {
-                var scheduledRules = await GetScheduledRulesForExecution(log);
+                var scheduledRules = GetScheduledRulesForExecution(log);
                 if (scheduledRules == null)
                 {
                     log.Info($"Timely trigger no entries to trigger");
@@ -68,7 +68,7 @@ namespace ChaosExecuter.Trigger
 
         /// <summary>Get the scheduled rules for the chaos execution.</summary>
         /// <returns></returns>
-        private static async Task<IEnumerable<ScheduledRules>> GetScheduledRulesForExecution(TraceWriter log)
+        private static IEnumerable<ScheduledRules> GetScheduledRulesForExecution(TraceWriter log)
         {
             try
             {
@@ -83,7 +83,7 @@ namespace ChaosExecuter.Trigger
                 var filter = TableQuery.CombineFilters(dateFilterByUtc, TableOperators.And, dateFilterByFrequency);
                 var scheduledQuery = new TableQuery<ScheduledRules>().Where(filter);
 
-                return await StorageProvider.GetEntitiesAsync(scheduledQuery, storageAccount, AzureClient.AzureSettings.ScheduledRulesTable);
+                return StorageProvider.GetEntities(scheduledQuery, storageAccount, AzureClient.AzureSettings.ScheduledRulesTable);
             }
             catch (Exception e)
             {
