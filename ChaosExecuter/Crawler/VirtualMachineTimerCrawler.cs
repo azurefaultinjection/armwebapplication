@@ -22,7 +22,7 @@ namespace ChaosExecuter.Crawler
         private static readonly IStorageAccountProvider StorageProvider = new StorageAccountProvider();
 
         // TODO: need to read the crawler timer from the configuration.
-          [FunctionName("timercrawlerforvirtualmachines")]
+        [FunctionName("timercrawlerforvirtualmachines")]
         public static void Run([TimerTrigger("0 */2 * * * *")]TimerInfo myTimer, TraceWriter log)
         {
             log.Info($"timercrawlerforvirtualmachines executed at: {DateTime.UtcNow}");
@@ -67,10 +67,10 @@ namespace ChaosExecuter.Crawler
                     var virtualMachines = await GetVirtualMachinesByResourceGroup(resourceGroup, log);
                     if (virtualMachines != null)
                     {
-                        var tasks = InsertOrReplaceEntitiesIntoTable(virtualMachines.ToList(), table, log);
-                        if (tasks != null)
+                        var batchOperation = InsertOrReplaceEntitiesIntoTable(virtualMachines.ToList(), resourceGroup.Name, table, log);
+                        if (batchOperation != null)
                         {
-                            await Task.WhenAll(tasks);
+                            await table.ExecuteBatchAsync(batchOperation);
                         }
                     }
                 });
@@ -112,41 +112,34 @@ namespace ChaosExecuter.Crawler
         /// <summary>1. Convert the list of virtual machines into Virtual machine crawler entities
         /// 2. Add the entity into the table using the batch operation task</summary>
         /// <param name="virtualMachines">List of virtual machines, which needs to push into table</param>
+        /// <param name="resourceGroupName"></param>
         /// <param name="table">Name of the table, where the virtual machines needs to push.</param>
         /// <param name="log">Trace writer instance</param>
         /// <returns>Returns the list of the insert batch operation as task.</returns>
-        private static List<Task> InsertOrReplaceEntitiesIntoTable(List<IVirtualMachine> virtualMachines, CloudTable table, TraceWriter log)
+        private static TableBatchOperation InsertOrReplaceEntitiesIntoTable(List<IVirtualMachine> virtualMachines, string resourceGroupName, CloudTable table, TraceWriter log)
         {
             if (virtualMachines.Count == 0)
             {
                 return null;
             }
 
-            var tasks = new List<Task>();
-            // Grouping based on the resource group name, to keep the resource group name as the partition key for the stand alone virtual machines.
-            var groupList = virtualMachines.GroupBy(x => x.ResourceGroupName).Select(x => x).ToList();
-            foreach (var groupItem in groupList)
+            var batchOperation = new TableBatchOperation();
+            Parallel.ForEach(virtualMachines, virtualMachine =>
             {
                 try
                 {
-                    var batchOperation = new TableBatchOperation();
-                    foreach (var virtualMachine in groupItem)
-                    {
-                        var partitionKey = virtualMachine.ResourceGroupName;
-                        batchOperation.InsertOrReplace(VirtualMachineHelper.ConvertToVirtualMachineEntity(virtualMachine, partitionKey));
-                    }
-
-                    if (batchOperation.Count <= 0) continue;
-                    table.ExecuteBatchAsync(batchOperation);
-                    tasks.Add(table.ExecuteBatchAsync(batchOperation));
+                    var partitionKey = resourceGroupName;
+                    batchOperation.InsertOrReplace(
+                            VirtualMachineHelper.ConvertToVirtualMachineEntity(virtualMachine, partitionKey));
                 }
                 catch (Exception e)
                 {
                     log.Error($"timercrawlerforvirtualmachines threw the exception ", e, "InsertEntitiesIntoTable");
                 }
-            }
+            });
 
-            return tasks;
+            return batchOperation;
+
         }
 
         /// <summary>Get the list of the load balancer virtual machines by resource group.</summary>
