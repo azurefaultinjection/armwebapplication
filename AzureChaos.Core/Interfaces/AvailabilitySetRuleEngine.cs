@@ -4,7 +4,7 @@ using AzureChaos.Core.Helper;
 using AzureChaos.Core.Models;
 using AzureChaos.Core.Models.Configs;
 using AzureChaos.Core.Providers;
-using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
+using Fluent = Microsoft.Azure.Management.ResourceManager.Fluent.Core;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
@@ -80,7 +80,7 @@ namespace AzureChaos.Core.Interfaces
             var scheduledRulesbatchOperation = VirtualMachineHelper.CreateScheduleEntityForAvailabilitySet(virtualMachinesResults.ToList(), _azureSettings.Chaos.SchedulerFrequency, domainFlag);
             if (scheduledRulesbatchOperation.Count <= 0) return;
             var table = storageAccountProvider.CreateOrGetTable(storageAccount, _azureSettings.ScheduledRulesTable);
-            Extensions.Synchronize(() => table.ExecuteBatchAsync(scheduledRulesbatchOperation));
+            Fluent.Extensions.Synchronize(() => table.ExecuteBatchAsync(scheduledRulesbatchOperation));
         }
 
         private IEnumerable<string> GetRecentlyExecutedAvailabilitySetDomainCombination(IStorageAccountProvider storageAccountProvider, CloudStorageAccount storageAccount)
@@ -139,8 +139,8 @@ namespace AzureChaos.Core.Interfaces
         }
         private List<string> GetPossibleAvailabilitySets(IStorageAccountProvider storageAccountProvider, CloudStorageAccount storageAccount)
         {
-            var availabilitySetQuery = TableQuery.GenerateFilterCondition("Virtualmachines", QueryComparisons.NotEqual, "");
-            var availabilitySetTableQuery = new TableQuery<AvailabilitySetsCrawlerResponseEntity>().Where(availabilitySetQuery);
+            var availabilitySetQuery = TableQuery.GenerateFilterConditionForBool("HasVirtualMachines", QueryComparisons.Equal,true);
+            var availabilitySetTableQuery = new TableQuery<AvailabilitySetsCrawlerResponse>().Where(availabilitySetQuery);
 
             var crawledAvailabilitySetResults = storageAccountProvider.GetEntities(availabilitySetTableQuery, storageAccount, _azureSettings.AvailabilitySetCrawlerTableName);
             if (crawledAvailabilitySetResults == null)
