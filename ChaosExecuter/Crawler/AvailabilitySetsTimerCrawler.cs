@@ -25,7 +25,7 @@ namespace ChaosExecuter.Crawler
 
         // TODO: need to read the crawler timer from the configuration.
         [FunctionName("timercrawlerforavailabilitysets")]
-        public static void Run([TimerTrigger("0 */15 * * * *")]TimerInfo myTimer, TraceWriter log)
+        public static async Task Run([TimerTrigger("0 */15 * * * *")]TimerInfo myTimer, TraceWriter log)
         {
             log.Info($"timercrawlerforavailabilitysets executed at: {DateTime.UtcNow}");
 
@@ -37,7 +37,7 @@ namespace ChaosExecuter.Crawler
                 return;
             }
 
-            Task.Run(() => GetAndInsertAvailiabilitySetsForResourceGroups(resourceGroupList, log, azureSettings));
+           await GetAndInsertAvailiabilitySetsForResourceGroupsAsync(resourceGroupList, log, azureSettings);
         }
 
         /// <summary>1. Iterate the resource groups to get the availability sets for individual resource group.
@@ -47,18 +47,16 @@ namespace ChaosExecuter.Crawler
         /// <param name="resourceGroups">List of resource groups for the particular subscription.</param>
         /// <param name="log">Trace writer instance</param>
         /// <param name="azureSettings">Azure settings configuration to get the table name of scale set and virtual machine.</param>
-        private static async Task GetAndInsertAvailiabilitySetsForResourceGroups(IEnumerable<IResourceGroup> resourceGroups,
+        private static async Task GetAndInsertAvailiabilitySetsForResourceGroupsAsync(IEnumerable<IResourceGroup> resourceGroups,
             TraceWriter log, AzureSettings azureSettings)
         {
             try
             {
                 var storageAccount = StorageProvider.CreateOrGetStorageAccount(AzureClient);
-                var vmTable = Task.Run(() =>
-                    StorageProvider.CreateOrGetTableAsync(storageAccount,
-                        azureSettings.VirtualMachineCrawlerTableName));
-                var availabilitySetTable = Task.Run(() =>
-                    StorageProvider.CreateOrGetTableAsync(storageAccount,
-                        azureSettings.AvailabilitySetCrawlerTableName));
+                var vmTable = StorageProvider.CreateOrGetTableAsync(storageAccount,
+                        azureSettings.VirtualMachineCrawlerTableName);
+                var availabilitySetTable = StorageProvider.CreateOrGetTableAsync(storageAccount,
+                        azureSettings.AvailabilitySetCrawlerTableName);
 
                 await Task.WhenAll(vmTable, availabilitySetTable);
 

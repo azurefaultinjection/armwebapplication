@@ -11,7 +11,8 @@ using System.Threading.Tasks;
 
 namespace ChaosExecuter.Trigger
 {
-    /// <summary>Scheduled trigger - will pick the lastest rules from the scheduled rules table and execute the executer if the execution time is near.</summary>
+    /// <summary>Scheduled trigger - will pick the lastest rules from the scheduled rules table and execute the executer 
+    /// if the execution time is near.</summary>
     public static class TimelyTrigger
     {
         private static readonly AzureClient AzureClient = new AzureClient();
@@ -20,7 +21,7 @@ namespace ChaosExecuter.Trigger
         // TODO will be adding the CRON expression from the config.
         /// <summary>Every 5 mints </summary>
         [FunctionName("TimelyTrigger")]
-        public static async void Run([TimerTrigger("0 */15 * * * *")]TimerInfo myTimer, [OrchestrationClient]
+        public static async Task Run([TimerTrigger("0 */15 * * * *")]TimerInfo myTimer, [OrchestrationClient]
         DurableOrchestrationClient starter, TraceWriter log)
         {
             log.Info($"Timely trigger function execution started: {DateTime.UtcNow}");

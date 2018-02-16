@@ -26,7 +26,7 @@ namespace ChaosExecuter.Crawler
 
         // TODO: need to read the crawler timer from the configuration.
         [FunctionName("timercrawlerforvirtualmachinescaleset")]
-        public static void Run([TimerTrigger("0 */2 * * * *")]TimerInfo myTimer, TraceWriter log)
+        public static async Task Run([TimerTrigger("0 */2 * * * *")]TimerInfo myTimer, TraceWriter log)
         {
             log.Info($"timercrawlerforvirtualmachinescaleset executed at: {DateTime.UtcNow}");
 
@@ -38,7 +38,7 @@ namespace ChaosExecuter.Crawler
                 return;
             }
 
-            Task.Run(() => GetScaleSetsForResourceGroups(resourceGroupList, log, AzureClient.AzureSettings));
+            await GetScaleSetsForResourceGroupsAsync(resourceGroupList, log, AzureClient.AzureSettings);
         }
 
         /// <summary>1. Iterate the resource groups to get the scale sets for individual resource group.
@@ -48,14 +48,14 @@ namespace ChaosExecuter.Crawler
         /// <param name="resourceGroups">List of resource groups for the particular subscription.</param>
         /// <param name="log">Trace writer instance</param>
         /// <param name="azureSettings">Azure settings configuration to get the table name of scale set and virtual machine.</param>
-        private static async Task GetScaleSetsForResourceGroups(IEnumerable<IResourceGroup> resourceGroups,
+        private static async Task GetScaleSetsForResourceGroupsAsync(IEnumerable<IResourceGroup> resourceGroups,
             TraceWriter log, AzureSettings azureSettings)
         {
             try
             {
                 var storageAccount = StorageProvider.CreateOrGetStorageAccount(AzureClient);
-                var vmTable = Task.Run(() => StorageProvider.CreateOrGetTableAsync(storageAccount, azureSettings.VirtualMachineCrawlerTableName));
-                var scaleSetTable = Task.Run(() => StorageProvider.CreateOrGetTableAsync(storageAccount, azureSettings.ScaleSetCrawlerTableName));
+                var vmTable = StorageProvider.CreateOrGetTableAsync(storageAccount, azureSettings.VirtualMachineCrawlerTableName);
+                var scaleSetTable = StorageProvider.CreateOrGetTableAsync(storageAccount, azureSettings.ScaleSetCrawlerTableName);
 
                 await Task.WhenAll(vmTable, scaleSetTable);
 
@@ -109,7 +109,7 @@ namespace ChaosExecuter.Crawler
             var tasks = new List<Task>();
             var scaleSetbatchOperation = new TableBatchOperation();
 
-            foreach (var scaleSet in scaleSets)
+            Parallel.ForEach(scaleSets, scaleSet =>
             {
                 try
                 {
@@ -122,7 +122,8 @@ namespace ChaosExecuter.Crawler
                     }
 
                     // get the scale set instances
-                    var vmBatchOperation = InsertOrReplaceVmInstancesIntoTable(scaleSet.VirtualMachines.List(), scaleSet.ResourceGroupName,
+                    var vmBatchOperation = InsertOrReplaceVmInstancesIntoTable(scaleSet.VirtualMachines.List(),
+                        scaleSet.ResourceGroupName,
                         scaleSet.Id, zoneId);
                     if (vmBatchOperation != null && vmBatchOperation.Count > 0)
                     {
@@ -132,9 +133,10 @@ namespace ChaosExecuter.Crawler
                 catch (Exception e)
                 {
                     //  catch the error, to continue adding other entities to table
-                    log.Error($"timercrawlerforvirtualmachinescaleset threw the exception ", e, "InsertOrReplaceScaleSetEntitiesIntoTable for the scale set: " + scaleSet.Name);
+                    log.Error($"timercrawlerforvirtualmachinescaleset threw the exception ", e,
+                        "InsertOrReplaceScaleSetEntitiesIntoTable for the scale set: " + scaleSet.Name);
                 }
-            }
+            });
 
             if (scaleSetbatchOperation.Count > 0)
             {
