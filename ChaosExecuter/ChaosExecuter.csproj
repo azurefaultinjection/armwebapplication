@@ -35,5 +35,6 @@
     <Folder Include="Properties\" />
     <Folder Include="Trigger\" />
     <Folder Include="Schedulers\" />
+	<Folder Include="Crawler\" />
   </ItemGroup>
 </Project>
