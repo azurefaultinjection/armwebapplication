@@ -3,15 +3,14 @@ using AzureChaos.Core.Entity;
 using AzureChaos.Core.Enums;
 using AzureChaos.Core.Helper;
 using AzureChaos.Core.Models;
-using AzureChaos.Core.Models.Configs;
 using AzureChaos.Core.Providers;
 using Microsoft.Azure.Management.Compute.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent;
-using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.WindowsAzure.Storage.Table;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -20,68 +19,66 @@ namespace ChaosExecuter.Crawler
 {
     public static class AvailabilitySetsTimerCrawler
     {
-        private static readonly AzureClient AzureClient = new AzureClient();
-        private static readonly IStorageAccountProvider StorageProvider = new StorageAccountProvider();
-
         // TODO: need to read the crawler timer from the configuration.
-        [FunctionName("timercrawlerforavailabilitysets")]
+         [FunctionName("timercrawlerforavailabilitysets")]
         public static async Task Run([TimerTrigger("0 */15 * * * *")]TimerInfo myTimer, TraceWriter log)
         {
             log.Info($"timercrawlerforavailabilitysets executed at: {DateTime.UtcNow}");
-
-            var azureSettings = AzureClient.AzureSettings;
-            var resourceGroupList = ResourceGroupHelper.GetResourceGroupsInSubscription(AzureClient.AzureInstance, azureSettings);
+            var resourceGroupList = ResourceGroupHelper.
+                GetResourceGroupsInSubscription(AzureClient.AzureInstance, AzureClient.AzureSettings);
             if (resourceGroupList == null)
             {
                 log.Info($"timercrawlerforavailabilitysets: no resource groups to crawler");
                 return;
             }
 
-           await GetAndInsertAvailiabilitySetsForResourceGroupsAsync(resourceGroupList, log, azureSettings);
+            await InsertAvailabilitySets(resourceGroupList, log);
         }
 
         /// <summary>1. Iterate the resource groups to get the availability sets for individual resource group.
         /// 2. Convert the List of availability sets into availability set entity and add them into the table batch operation.
         /// 3. Get the list of virtual machines, convert into entity and add them into the table batach operation
         /// 3. Everything will happen parallel using TPL Parallel.Foreach</summary>
-        /// <param name="resourceGroups">List of resource groups for the particular subscription.</param>
+        /// <param name="resourceGroupList">List of resource groups for the particular subscription.</param>
         /// <param name="log">Trace writer instance</param>
-        /// <param name="azureSettings">Azure settings configuration to get the table name of scale set and virtual machine.</param>
-        private static async Task GetAndInsertAvailiabilitySetsForResourceGroupsAsync(IEnumerable<IResourceGroup> resourceGroups,
-            TraceWriter log, AzureSettings azureSettings)
+        private static async Task InsertAvailabilitySets(IEnumerable<IResourceGroup> resourceGroupList,
+            TraceWriter log)
         {
             try
             {
-                var storageAccount = StorageProvider.CreateOrGetStorageAccount(AzureClient);
-                var vmTable = StorageProvider.CreateOrGetTableAsync(storageAccount,
-                        azureSettings.VirtualMachineCrawlerTableName);
-                var availabilitySetTable = StorageProvider.CreateOrGetTableAsync(storageAccount,
-                        azureSettings.AvailabilitySetCrawlerTableName);
+                var azureSettings = AzureClient.AzureSettings;
+
+                // create the virtual machine table and availability set table asynchronously
+                var vmTable = StorageAccountProvider.CreateOrGetTableAsync(
+                    azureSettings.VirtualMachineCrawlerTableName);
+                var availabilitySetTable = StorageAccountProvider.CreateOrGetTableAsync(
+                    azureSettings.AvailabilitySetCrawlerTableName);
 
                 await Task.WhenAll(vmTable, availabilitySetTable);
 
-                // using parallel here to run all the resource groups parallelly, parallel is 10times faster than normal foreach.
-                Parallel.ForEach(resourceGroups, async resourceGroup =>
+                // using concurrent bag to get the results from the parallel execution
+                var vmConcurrent = new ConcurrentBag<IEnumerable<IGrouping<string, IVirtualMachine>>>();
+                var batchTasks = new ConcurrentBag<Task>();
+
+                // get the availability set batch operation and vm list by availability sets
+                SetTheVirtualMachinesAndBatchTask(resourceGroupList, vmConcurrent, batchTasks,
+                    availabilitySetTable.Result, log);
+
+                // get the virtual machine table batch operation parallely
+                IncludeVirtualMachineTask(vmConcurrent, batchTasks, vmTable.Result, log);
+
+                // execute all batch operation as parallel
+                Parallel.ForEach(batchTasks, new ParallelOptions { MaxDegreeOfParallelism = 20 }, (task) =>
                 {
                     try
                     {
-                        log.Info("Resource Group: " + resourceGroup.Name);
-                        var availabilitySets =
-                            await AzureClient.AzureInstance.AvailabilitySets.ListByResourceGroupAsync(
-                                resourceGroup.Name);
-                        var tasks = InsertOrReplaceAvailabilitySetEntitiesIntoTable(availabilitySets, vmTable.Result,
-                            availabilitySetTable.Result, log);
-                        if (tasks != null && tasks.Any())
-                        {
-                            await Task.WhenAll(tasks);
-                        }
+                        Task.WhenAll(task);
                     }
                     catch (Exception e)
                     {
-                        //  catch the error, to continue adding other entities to table
-                        log.Error($"timercrawlerforvirtualmachinescaleset threw the exception ", e,
-                            "GetScaleSetsForResourceGroups: for the resource group " + resourceGroup.Name);
+                        log.Error($"timercrawlerforavailableset threw the exception on executing the batch operation ", e);
                     }
+                    
                 });
             }
             catch (Exception ex)
@@ -91,69 +88,123 @@ namespace ChaosExecuter.Crawler
             }
         }
 
-        /// <summary>1. Get all the virtual machines from the each availability set and add them into batch operation
-        /// 3. Combine all the tasks and return the list of tasks.</summary>
-        /// <param name="availabilitySets">List of availability sets for the resource group</param>
-        /// <param name="vmTable">Get the virtual machine table instance</param>
-        /// <param name="availabilitySetSetTable">Get the scale set table instance</param>
-        /// <param name="log">Trace writer instance</param>
-        /// <returns></returns>
-        private static List<Task> InsertOrReplaceAvailabilitySetEntitiesIntoTable(
-            IPagedCollection<IAvailabilitySet> availabilitySets,
+        /// <summary>Include the virtual machine batch operation into existing batch opeation</summary>
+        /// <param name="vmConcurrent"></param>
+        /// <param name="batchTasks"></param>
+        /// <param name="vmTable"></param>
+        /// <param name="log"></param>
+        private static void IncludeVirtualMachineTask(ConcurrentBag<IEnumerable<IGrouping<string, IVirtualMachine>>> vmConcurrent,
+            ConcurrentBag<Task> batchTasks,
             CloudTable vmTable,
-            CloudTable availabilitySetSetTable,
             TraceWriter log)
         {
-            if (availabilitySets == null || vmTable == null || availabilitySetSetTable == null)
+            var gr = vmConcurrent.SelectMany(x => x);
+            Parallel.ForEach(gr, groupItem =>
             {
-                return null;
-            }
+                var vmBatchOperation = GetVmBatchOperation(groupItem, log);
+                if (vmBatchOperation != null && vmBatchOperation.Count > 0 && vmTable != null)
+                {
+                    batchTasks.Add(vmTable.ExecuteBatchAsync(vmBatchOperation));
+                }
+            });
+        }
 
-            var tasks = new List<Task>();
-            var availabilitySetbatchOperation = new TableBatchOperation();
-            Parallel.ForEach(availabilitySets, async availabilitySet =>
+        /// <summary>Get the list of the availability sets by resource group.
+        /// And get the virtual machine by resource group and the availability sets.
+        /// And get the batch operation for the availability sets</summary>
+        /// <param name="resourceGroupList"></param>
+        /// <param name="vmConcurrent"></param>
+        /// <param name="batchTasks"></param>
+        /// <param name="availabilitySetTable"></param>
+        /// <param name="log"></param>
+        private static void SetTheVirtualMachinesAndBatchTask(IEnumerable<IResourceGroup> resourceGroupList,
+            ConcurrentBag<IEnumerable<IGrouping<string, IVirtualMachine>>> vmConcurrent,
+            ConcurrentBag<Task> batchTasks,
+            CloudTable availabilitySetTable,
+            TraceWriter log)
+        {
+            Parallel.ForEach(resourceGroupList, resourceGroup =>
             {
                 try
                 {
-                    log.Info("availabilitySet name: " + availabilitySet.Name + "resource group name: " + availabilitySet.ResourceGroupName);
-                    availabilitySetbatchOperation.InsertOrReplace(ConvertToAvailabilitySetsCrawlerResponse(availabilitySet));
-                    var pageCollection = await AzureClient.AzureInstance.VirtualMachines.ListByResourceGroupAsync(availabilitySet.ResourceGroupName);
-                    if (pageCollection != null)
-                    {
-                        var virtualMachinesList = pageCollection.Where(x =>
-                            availabilitySet.Id.Equals(x.AvailabilitySetId, StringComparison.OrdinalIgnoreCase));
+                    var availabilitySetIds = new List<string>();
+                    // get the availability sets by resource group
+                    // get the availability sets batch operation and get the list of availability set ids
+                    var availabilitySetbatchOperation =
+                        GetAvailabilitySetBatchOperation(resourceGroup.Name, availabilitySetIds);
 
-                        // get the scale set instances
-                        var vmBatchOperation = InsertOrReplaceVirtualMachinesIntoTable(virtualMachinesList,
-                            availabilitySet.ResourceGroupName,
-                            availabilitySet.Id, log);
-                        if (vmBatchOperation != null && vmBatchOperation.Count > 0)
-                        {
-                            tasks.Add(vmTable.ExecuteBatchAsync(vmBatchOperation));
-                        }
+                    // add the batch operation into task list
+                    if (availabilitySetbatchOperation.Count > 0 && availabilitySetTable != null)
+                    {
+                        batchTasks.Add(
+                            availabilitySetTable.ExecuteBatchAsync(availabilitySetbatchOperation));
+                    }
+
+                    // Get the virtual machines by resource group and by availability set ids
+                    var vmsByAvailabilitySetId = GetVirtualMachineList(resourceGroup.Name, availabilitySetIds);
+                    if (vmsByAvailabilitySetId.Count > 0)
+                    {
+                        vmConcurrent.Add(vmsByAvailabilitySetId);
                     }
                 }
                 catch (Exception e)
                 {
-                    //  catch the error, to continue adding other entities to table
-                    log.Error($"timercrawlerforvirtualmachinescaleset threw the exception ",
-                        e,
-                        "InsertOrReplaceAvailabilitySetEntitiesIntoTable for the availability set: " +
-                        availabilitySet.Name);
+                    log.Error($"timercrawlerforvirtualmachinescaleset threw the exception ", e,
+                        "for resource group: " + resourceGroup.Name);
                 }
             });
-
-            if (availabilitySetbatchOperation.Any())
-            {
-                tasks.Add(availabilitySetSetTable.ExecuteBatchAsync(availabilitySetbatchOperation));
-            }
-
-            return tasks;
         }
 
-        private static TableBatchOperation InsertOrReplaceVirtualMachinesIntoTable(IEnumerable<IVirtualMachine> virtualMachines,
-            string resourceGroupName,
-            string availabilitySetId, TraceWriter log)
+        /// <summary>Get the virtual machines by resource group and availability set ids.</summary>
+        /// <param name="resourceGroupName"></param>
+        /// <param name="availabilitySetIds"></param>
+        /// <returns></returns>
+        private static IList<IGrouping<string, IVirtualMachine>> GetVirtualMachineList(string resourceGroupName, List<string> availabilitySetIds)
+        {
+            // Get the virtual machines by resource group
+            var vmList = AzureClient.AzureInstance.VirtualMachines
+                .ListByResourceGroup(resourceGroupName).ToList();
+            if (vmList.Any())
+            {
+                return null;
+            }
+
+            // Group the the virtual machine based on the availability set id 
+            var vmsByAvailabilitySetId = vmList.Where(x => availabilitySetIds
+                    .Contains(x.AvailabilitySetId, StringComparer.OrdinalIgnoreCase))
+                .GroupBy(x => x.AvailabilitySetId, x => x).ToList();
+            return vmsByAvailabilitySetId;
+        }
+
+        /// <summary>Get the availability set batch operation</summary>
+        /// <param name="resourceGroupName">Resource group name to filter the availability set</param>
+        /// <param name="asIdList">List of availability set, 
+        /// which will be using to filter the virtual machine list by availability set ids</param>
+        /// <returns></returns>
+        private static TableBatchOperation GetAvailabilitySetBatchOperation(string resourceGroupName,
+            List<string> asIdList)
+        {
+            var asSetsByRg =
+                AzureClient.AzureInstance.AvailabilitySets.ListByResourceGroup(resourceGroupName);
+
+            var availabilitySetbatchOperation = new TableBatchOperation();
+            foreach (var availabilitySet in asSetsByRg)
+            {
+                availabilitySetbatchOperation.InsertOrReplace(
+                    ConvertToAvailabilitySetsCrawlerResponse(availabilitySet));
+                asIdList.Add(availabilitySet.Id);
+            }
+
+            return availabilitySetbatchOperation;
+        }
+
+        /// <summary>Get the virtual machine batch operation.</summary>
+        /// <param name="virtualMachines">List of the virtual machines</param>
+        /// <param name="log"></param>
+        /// <returns></returns>
+        private static TableBatchOperation GetVmBatchOperation(
+            IGrouping<string, IVirtualMachine> virtualMachines,
+             TraceWriter log)
         {
             if (virtualMachines == null)
             {
@@ -161,22 +212,29 @@ namespace ChaosExecuter.Crawler
             }
 
             var vmbatchOperation = new TableBatchOperation();
-            var partitionKey = availabilitySetId.Replace(Delimeters.ForwardSlash, Delimeters.Exclamatory);
-            Parallel.ForEach(virtualMachines, virtualMachine =>
+            var partitionKey = virtualMachines.Key.Replace(Delimeters.ForwardSlash, Delimeters.Exclamatory);
+            foreach (var virtualMachine in virtualMachines)
             {
-                log.Info("virtual machine name: " + virtualMachine.Name + "availabilitySet id: " + availabilitySetId);
-                var virtualMachineEntity = VirtualMachineHelper.ConvertToVirtualMachineEntity(
-                    virtualMachine,
-                    partitionKey,
-                    resourceGroupName);
-                virtualMachineEntity.VirtualMachineGroup = VirtualMachineGroup.AvailabilitySets.ToString();
-                vmbatchOperation.InsertOrReplace(virtualMachineEntity);
-            });
+                try
+                {
+                    var virtualMachineEntity = VirtualMachineHelper.ConvertToVirtualMachineEntity(
+                        virtualMachine,
+                        partitionKey,
+                        virtualMachine.ResourceGroupName);
+                    virtualMachineEntity.VirtualMachineGroup = VirtualMachineGroup.AvailabilitySets.ToString();
+                    vmbatchOperation.InsertOrReplace(virtualMachineEntity);
+                }
+                catch (Exception e)
+                {
+                    log.Error($"timercrawlerforvirtualmachinescaleset threw the exception ", e,
+                        "GetVmBatchOperation");
+                }
+            }
 
             return vmbatchOperation;
         }
 
-        /// <summary>Convert the Availability Set instance to scale set entity.</summary>
+        /// <summary>Convert the Availability Set instance to Availability set entity.</summary>
         /// <param name="availabilitySet">The scale set instance.</param>
         /// <returns></returns>
         private static AvailabilitySetsCrawlerResponse ConvertToAvailabilitySetsCrawlerResponse(IAvailabilitySet availabilitySet)
