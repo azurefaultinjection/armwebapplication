@@ -8,6 +8,7 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using AzureChaos.Core.Models.Configs;
 
 namespace AzureChaos.Core.Helper
 {
@@ -38,11 +39,11 @@ namespace AzureChaos.Core.Helper
             string combinationKey;
             if (domainFlage)
             {
-                combinationKey = entity.AvailableSetId + "!" + entity.FaultDomain.ToString();
+                combinationKey = entity.AvailableSetId + "!" + entity.FaultDomain?.ToString();
             }
             else
             {
-                combinationKey = entity.AvailableSetId + "@" + entity.UpdateDomain.ToString();
+                combinationKey = entity.AvailableSetId + "@" + entity.UpdateDomain?.ToString();
             }
             return new ScheduledRules(VirtualMachineGroup.AvailabilitySets.ToString(), entity.RowKey)
             {
@@ -83,14 +84,14 @@ namespace AzureChaos.Core.Helper
             return JsonConvert.SerializeObject(triggerdata);
         }
 
-        public static List<VirtualMachineGroup> GetEnabledChaosSet(IStorageAccountProvider storageAccountProvider, AzureClient azureClient)
+        public static List<VirtualMachineGroup> GetEnabledChaosSet(AzureSettings azureSettings)
         {
-            var storageAccount = storageAccountProvider.CreateOrGetStorageAccount(azureClient);
+            var enabledChaos = Mappings.GetEnabledChaos(AzureClient.AzureSettings);
+
             var selectionQuery = TableQuery.GenerateFilterConditionForDate("scheduledExecutionTime", QueryComparisons.GreaterThanOrEqual,
-                DateTimeOffset.UtcNow.AddMinutes(-azureClient.AzureSettings.Chaos.SchedulerFrequency));
+                DateTimeOffset.UtcNow.AddMinutes(-azureSettings.Chaos.SchedulerFrequency));
             var scheduledQuery = new TableQuery<ScheduledRules>().Where(selectionQuery);
-            var enabledChaos = Mappings.GetEnabledChaos(azureClient.AzureSettings);
-            var executedResults = storageAccountProvider.GetEntities(scheduledQuery, storageAccount, azureClient.AzureSettings.ScheduledRulesTable);
+            var executedResults = StorageAccountProvider.GetEntities(scheduledQuery, azureSettings.ScheduledRulesTable);
             if (executedResults == null)
             {
                 var chaos = enabledChaos.Where(x => x.Value);

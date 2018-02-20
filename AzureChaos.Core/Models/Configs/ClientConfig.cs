@@ -24,5 +24,8 @@ namespace AzureChaos.Core.Models.Configs
 
         [JsonProperty("microsoft.chaos.client.storageAccount.name")]
         public string StorageAccountName { get; set; }
+
+        [JsonProperty("microsoft.chaos.client.storageAccount.key")]
+        public string StorageAccountKey { get; set; }
     }
 }

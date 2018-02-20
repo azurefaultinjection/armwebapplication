@@ -15,9 +15,6 @@ namespace ChaosExecuter.Trigger
     /// if the execution time is near.</summary>
     public static class TimelyTrigger
     {
-        private static readonly AzureClient AzureClient = new AzureClient();
-        private static readonly IStorageAccountProvider StorageProvider = new StorageAccountProvider();
-
         // TODO will be adding the CRON expression from the config.
         /// <summary>Every 5 mints </summary>
         [FunctionName("TimelyTrigger")]
@@ -73,8 +70,6 @@ namespace ChaosExecuter.Trigger
         {
             try
             {
-                var storageAccount = StorageProvider.CreateOrGetStorageAccount(AzureClient);
-
                 var dateFilterByUtc = TableQuery.GenerateFilterConditionForDate("scheduledExecutionTime", QueryComparisons.GreaterThanOrEqual,
                     DateTimeOffset.UtcNow);
 
@@ -84,7 +79,7 @@ namespace ChaosExecuter.Trigger
                 var filter = TableQuery.CombineFilters(dateFilterByUtc, TableOperators.And, dateFilterByFrequency);
                 var scheduledQuery = new TableQuery<ScheduledRules>().Where(filter);
 
-                return StorageProvider.GetEntities(scheduledQuery, storageAccount, AzureClient.AzureSettings.ScheduledRulesTable);
+                return StorageAccountProvider.GetEntities(scheduledQuery, AzureClient.AzureSettings.ScheduledRulesTable);
             }
             catch (Exception e)
             {

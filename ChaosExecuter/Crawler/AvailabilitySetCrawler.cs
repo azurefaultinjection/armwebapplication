@@ -3,27 +3,34 @@ using AzureChaos.Core.Entity;
 using AzureChaos.Core.Enums;
 using AzureChaos.Core.Helper;
 using AzureChaos.Core.Models;
+using AzureChaos.Core.Models.Configs;
 using AzureChaos.Core.Providers;
 using Microsoft.Azure.Management.Compute.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent;
 using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.WindowsAzure.Storage.Table;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using System.Net.Http;
 using System.Threading.Tasks;
 
 namespace ChaosExecuter.Crawler
 {
-    public static class AvailabilitySetsTimerCrawler
+    public static class AvailabilitySetCrawler
     {
-        // TODO: need to read the crawler timer from the configuration.
-         [FunctionName("timercrawlerforavailabilitysets")]
-        public static async Task Run([TimerTrigger("0 */15 * * * *")]TimerInfo myTimer, TraceWriter log)
+        private static readonly AzureSettings _azureSettings = AzureClient.AzureSettings;
+
+        [FunctionName("AvailabilitySetCrawler")]
+        public static async Task Run([HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)]
+            HttpRequestMessage req, TraceWriter log)
         {
-            log.Info($"timercrawlerforavailabilitysets executed at: {DateTime.UtcNow}");
+            log.Info("C# HTTP trigger function processed a request.");
+            var sw = Stopwatch.StartNew();
             var resourceGroupList = ResourceGroupHelper.
                 GetResourceGroupsInSubscription(AzureClient.AzureInstance, AzureClient.AzureSettings);
             if (resourceGroupList == null)
@@ -33,6 +40,7 @@ namespace ChaosExecuter.Crawler
             }
 
             await InsertAvailabilitySets(resourceGroupList, log);
+            log.Info("C# HTTP trigger function processed a request. time elapsed : " + sw.ElapsedMilliseconds);
         }
 
         /// <summary>1. Iterate the resource groups to get the availability sets for individual resource group.
@@ -78,7 +86,7 @@ namespace ChaosExecuter.Crawler
                     {
                         log.Error($"timercrawlerforavailableset threw the exception on executing the batch operation ", e);
                     }
-                    
+
                 });
             }
             catch (Exception ex)
@@ -164,7 +172,7 @@ namespace ChaosExecuter.Crawler
             // Get the virtual machines by resource group
             var vmList = AzureClient.AzureInstance.VirtualMachines
                 .ListByResourceGroup(resourceGroupName).ToList();
-            if (vmList.Any())
+            if (!vmList.Any())
             {
                 return null;
             }

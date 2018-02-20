@@ -5,25 +5,25 @@ using AzureChaos.Core.Providers;
 using Microsoft.Azure.Management.Compute.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent;
 using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.WindowsAzure.Storage.Table;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Threading.Tasks;
 
 namespace ChaosExecuter.Crawler
 {
-    /// <summary>Crawl the stand alone virtual machines (i.e. exclude the availiability set and load balancer virtual machines.) 
-    /// from the resource groups which are specified in the configuration file. </summary>
-    public static class VirtualMachineTimerCrawler
+    public static class VirtualMachineCrawler
     {
-        // TODO: need to read the crawler timer from the configuration.
-        // [FunctionName("timercrawlerforvirtualmachines")]
-        public static void Run([TimerTrigger("0 */15 * * * *")]TimerInfo myTimer, TraceWriter log)
+        [FunctionName("VirtualMachineCrawler")]
+        public static void Run([HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)]
+            HttpRequestMessage req, TraceWriter log)
         {
-            log.Info($"timercrawlerforvirtualmachines executed at: {DateTime.UtcNow}");
+            log.Info("C# HTTP trigger function processed a request.");
             try
             {
                 var azureSettings = AzureClient.AzureSettings;
@@ -63,21 +63,21 @@ namespace ChaosExecuter.Crawler
 
                 // using parallel here to run all the resource groups parallelly, parallel is 10times faster than normal foreach.
                 Parallel.ForEach(resourceGroups, async resourceGroup =>
-               {
-                   log.Info($"timercrawlerforvirtualmachines: crawling virtual machines for  rg:" +
-                            resourceGroup.Name);
-                   var virtualMachines = await GetVirtualMachinesByResourceGroup(resourceGroup, log);
-                   if (virtualMachines != null)
-                   {
-                       var batchOperation = InsertOrReplaceEntitiesIntoTable(virtualMachines.ToList(),
-                           resourceGroup.Name,
-                           log);
-                       if (batchOperation != null)
-                       {
-                           batchTasks.Add(table.ExecuteBatchAsync(batchOperation));
-                       }
-                   }
-               });
+                {
+                    log.Info($"timercrawlerforvirtualmachines: crawling virtual machines for  rg:" +
+                             resourceGroup.Name);
+                    var virtualMachines = await GetVirtualMachinesByResourceGroup(resourceGroup, log);
+                    if (virtualMachines != null)
+                    {
+                        var batchOperation = InsertOrReplaceEntitiesIntoTable(virtualMachines.ToList(),
+                            resourceGroup.Name,
+                            log);
+                        if (batchOperation != null)
+                        {
+                            batchTasks.Add(table.ExecuteBatchAsync(batchOperation));
+                        }
+                    }
+                });
             }
             catch (Exception e)
             {
@@ -90,10 +90,12 @@ namespace ChaosExecuter.Crawler
         /// <param name="resourceGroup">From which resource group needs to get the virtual machines.</param>
         /// <param name="log">Trace writer instance</param>
         /// <returns>List of virtual machines which excludes the load balancer virtual machines and availability set virtual machines.</returns>
-        private static async Task<IEnumerable<IVirtualMachine>> GetVirtualMachinesByResourceGroup(IResourceGroup resourceGroup, TraceWriter log)
+        private static async Task<IEnumerable<IVirtualMachine>> GetVirtualMachinesByResourceGroup(
+            IResourceGroup resourceGroup, TraceWriter log)
         {
             var loadBalancersVms = GetVirtualMachinesFromLoadBalancers(resourceGroup.Name, log);
-            var pagedCollection = AzureClient.AzureInstance.VirtualMachines.ListByResourceGroupAsync(resourceGroup.Name);
+            var pagedCollection =
+                AzureClient.AzureInstance.VirtualMachines.ListByResourceGroupAsync(resourceGroup.Name);
             var tasks = new List<Task>
             {
                 loadBalancersVms,
@@ -103,14 +105,16 @@ namespace ChaosExecuter.Crawler
             await Task.WhenAll(tasks);
             if (pagedCollection.Result == null || !pagedCollection.Result.Any())
             {
-                log.Info($"timercrawlerforvirtualmachines: no virtual machines for the resource group: " + resourceGroup.Name);
+                log.Info($"timercrawlerforvirtualmachines: no virtual machines for the resource group: " +
+                         resourceGroup.Name);
                 return null;
             }
 
             var loadBalancerIds = loadBalancersVms.Result;
             var virtuallMachines = pagedCollection.Result;
             return virtuallMachines?.Select(x => x).Where(x => string.IsNullOrWhiteSpace(x.AvailabilitySetId) &&
-                                                                                !loadBalancerIds.Contains(x.Id, StringComparer.OrdinalIgnoreCase));
+                                                               !loadBalancerIds.Contains(x.Id,
+                                                                   StringComparer.OrdinalIgnoreCase));
         }
 
         /// <summary>1. Convert the list of virtual machines into Virtual machine crawler entities
@@ -135,7 +139,7 @@ namespace ChaosExecuter.Crawler
                 {
                     var partitionKey = resourceGroupName;
                     batchOperation.InsertOrReplace(
-                            VirtualMachineHelper.ConvertToVirtualMachineEntity(virtualMachine, partitionKey));
+                        VirtualMachineHelper.ConvertToVirtualMachineEntity(virtualMachine, partitionKey));
                 }
                 catch (Exception e)
                 {

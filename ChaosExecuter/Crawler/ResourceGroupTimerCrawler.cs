@@ -14,9 +14,6 @@ namespace ChaosExecuter.Crawler
 {
     public static class ResourceGroupTimerCrawler
     {
-        private static readonly AzureClient AzureClient = new AzureClient();
-        private static readonly IStorageAccountProvider StorageProvider = new StorageAccountProvider();
-
         [FunctionName("timercrawlerresourcegroups")]
         public static async Task Run([TimerTrigger("0 */2 * * * *")]TimerInfo myTimer, TraceWriter log)
         {
@@ -51,13 +48,11 @@ namespace ChaosExecuter.Crawler
                     log.Error($"timercrawlerresourcegroups threw exception ", ex, "timercrawlerresourcegroups");
                 }
             });
-
-            var storageAccount = StorageProvider.CreateOrGetStorageAccount(AzureClient);
             if (batchOperation.Count > 0)
             {
                 try
                 {
-                    var table = await StorageProvider.CreateOrGetTableAsync(storageAccount,
+                    var table = StorageAccountProvider.CreateOrGetTable(
                         resourceGroupCrawlerTableName);
                     await table.ExecuteBatchAsync(batchOperation);
                 }

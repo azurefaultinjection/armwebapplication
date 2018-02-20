@@ -8,24 +8,24 @@ using AzureChaos.Core.Providers;
 using Microsoft.Azure.Management.Compute.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent;
 using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.WindowsAzure.Storage.Table;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Threading.Tasks;
 
 namespace ChaosExecuter.Crawler
 {
-    /// <summary>Crawl the scale set and scalet set virtual machine instances from the resource groups which are specified in the configuration file. </summary>
-    public static class VirtualMachineScaleSetTimerCrawler
+    public static class VirtualMachineScaleSetCrawler
     {
-        // TODO: need to read the crawler timer from the configuration.
-         [FunctionName("timercrawlerforvirtualmachinescaleset")]
-        public static async Task Run([TimerTrigger("0 */15 * * * *")]TimerInfo myTimer, TraceWriter log)
+        [FunctionName("VirtualMachineScaleSetCrawler")]
+        public static async Task Run([HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)]HttpRequestMessage req, TraceWriter log)
         {
-            log.Info($"timercrawlerforvirtualmachinescaleset executed at: {DateTime.UtcNow}");
+            log.Info("C# HTTP trigger function processed a request.");
 
             var azureSettings = AzureClient.AzureSettings;
             var resourceGroupList = ResourceGroupHelper.GetResourceGroupsInSubscription(AzureClient.AzureInstance, azureSettings);

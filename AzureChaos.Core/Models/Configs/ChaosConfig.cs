@@ -20,6 +20,18 @@ namespace AzureChaos.Core.Models.Configs
         [JsonProperty("microsoft.chaos.crawler.frequency")]
         public int CrawlerFrequency { get; set; }
 
+        [JsonProperty("microsoft.chaos.crawler.standalonevirtualmachines.frequency")]
+        public int StandaloneVirtualMachinesCrawlerFrequency { get; set; }
+
+        [JsonProperty("microsoft.chaos.crawler.availabilityset.frequency")]
+        public int AvailabilitySetCrawlerFrequency { get; set; }
+
+        [JsonProperty("microsoft.chaos.crawler.virtualmachinescaleset.frequency")]
+        public int VirtualMachineScaleSetCrawlerFrequency { get; set; }
+
+        [JsonProperty("microsoft.chaos.crawler.resourcegroup.frequency")]
+        public int ResourceGroupCrawlerFrequency { get; set; }
+
         [JsonProperty("microsoft.chaos.startTime")]
         public string StartTime { get; set; }
 
@@ -45,10 +57,10 @@ namespace AzureChaos.Core.Models.Configs
         public List<string> BlackListedResources { get; set; }
 
         [JsonProperty("microsoft.chaos.blackListedResourceGroups")]
-        public string BlackListedResourceGroups { get; set; }
+        public List<string> BlackListedResourceGroupList { get; set; }
 
-        [JsonProperty("microsoft.chaos.resourceGroups")]
-        public string ResourceGroups { get; set; }
+        [JsonProperty("microsoft.chaos.inclusiveOnlyResourceGroups")]
+        public List<string> InclusiveOnlyResourceGroupList { get; set; }
 
         [JsonProperty("microsoft.chaos.AS")]
         public AvailabilitySetChaosConfig AvailabilitySetChaos { get; set; }

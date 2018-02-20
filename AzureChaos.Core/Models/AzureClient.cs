@@ -5,28 +5,39 @@ using Microsoft.Azure.Management.ResourceManager.Fluent.Authentication;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
 using Microsoft.WindowsAzure.Storage;
 using Newtonsoft.Json;
-using System.Threading.Tasks;
+using System;
 
 namespace AzureChaos.Core.Models
 {
     /// <summary>Azure configuration model which azure tenant, subscription
     /// and resource group needs to be crawled</summary>
-    public class AzureClient
+    public static class AzureClient
     {
-        public IAzure AzureInstance;
+        public static IAzure AzureInstance { get; private set; }
 
-        public AzureSettings AzureSettings;
+        public static AzureSettings AzureSettings { get; private set; }
 
-        /// <summary>For now, keeping the configuration information here.</summary>
-        /// will be adding the storage account details in the azure function and will provide azure function
-        public AzureClient()
+        /// <summary>
+        /// Initialize the configuration information and AzureInstance
+        /// </summary>
+        static AzureClient()
         {
-            //this.azureSettings = JsonConvert.DeserializeObject<AzureSettings>(HTTPHelpers.ExecuteGetWebRequest(Endpoints.ConfigEndpoint));
-            AzureSettings = GetAzureSettings();
-            if (AzureSettings != null)
-                AzureInstance = GetAzure(AzureSettings.Client.ClientId, AzureSettings.Client.ClientSecret,
-                    AzureSettings.Client.TenantId, AzureSettings.Client.SubscriptionId);
+            try
+            {
+                GetAzureSettings();
+
+                if (AzureSettings != null)
+                {
+                    AzureInstance = GetAzure(AzureSettings.Client.ClientId, AzureSettings.Client.ClientSecret,
+                        AzureSettings.Client.TenantId, AzureSettings.Client.SubscriptionId);
+                }
+            }
+            catch (Exception ex)
+            {
+                // TODO: Logs
+            }
         }
+
 
         /// <summary>Get the Azure object to read the all resources from azure</summary>
         /// <returns>Returns the Azure object.</returns>
@@ -55,20 +66,24 @@ namespace AzureChaos.Core.Models
                             .FromServicePrincipal(clientId, clientSecret, tenantId, AzureEnvironment.AzureGlobalCloud);
         }
 
-        private static AzureSettings GetAzureSettings()
+        private static void GetAzureSettings()
         {
             // Zen3 - string ConnectionString = "DefaultEndpointsProtocol=https;AccountName=cmnewschema;AccountKey=Txyvz6P4vUvRBOMrPo8TWE6jtm6JS7PG0+l696iOAua4ZaPXjZhzHtPuFb+Zg8nb5SQLev2flNExlEs7KoimdQ==;EndpointSuffix=core.windows.net";
-            // Microsft - string ConnectionString = "DefaultEndpointsProtocol=https;AccountName=cmnewschema;AccountKey=Txyvz6P4vUvRBOMrPo8TWE6jtm6JS7PG0+l696iOAua4ZaPXjZhzHtPuFb+Zg8nb5SQLev2flNExlEs7KoimdQ==;EndpointSuffix=core.windows.net";
-            const string connectionString = "DefaultEndpointsProtocol=https;AccountName=cmnewschema;AccountKey=Txyvz6P4vUvRBOMrPo8TWE6jtm6JS7PG0+l696iOAua4ZaPXjZhzHtPuFb+Zg8nb5SQLev2flNExlEs7KoimdQ==;EndpointSuffix=core.windows.net";
+            // Microsft - string ConnectionString = "DefaultEndpointsProtocol=https;AccountName=azurechaos;AccountKey=4p2a4nzUp3AytDnTm4KY3ERrNfzayowqGWJEZcitqS7fy/QOE/R/a0uT3qjjHVoH6Tb2dG3dC/qpYO4iM0cKHA==;EndpointSuffix=core.windows.net";
+            const string connectionString = "DefaultEndpointsProtocol=https;AccountName=azurechaos;AccountKey=b7yYCgyI9jg5fsRCr08tHzeic0CT5pelmpb2ZMcBaZKWhe8HdycOOs9r3luB2xygOwrbxFBnxLpysjzURKkQLQ==;EndpointSuffix=core.windows.net";
+
+            // TODO: Add to app settings of the function. 
+          //  const string connectionString = "UseDevelopmentStorage=true";
+
+            // TODO: Add below code to try catch & log
             var storageAccount = CloudStorageAccount.Parse(connectionString);
 
             var blobClinet = storageAccount.CreateCloudBlobClient();
             var blobContainer = blobClinet.GetContainerReference("configs");
             var blobReference = blobContainer.GetBlockBlobReference("azuresettings.json");
-            var tas = Task.Run(() => blobReference.DownloadTextAsync());
-            var data = tas.Result;
-            var azureSettings = JsonConvert.DeserializeObject<AzureSettings>(data);
-            return azureSettings;
+            //var tas = Task.Run(() => blobReference.DownloadTextAsync());
+            var data = blobReference.DownloadText();
+            AzureSettings = JsonConvert.DeserializeObject<AzureSettings>(data);
         }
 
     }

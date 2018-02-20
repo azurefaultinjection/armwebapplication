@@ -11,29 +11,21 @@ namespace AzureChaos.Core.Helper
     {
         public static List<IResourceGroup> GetResourceGroupsInSubscription(IAzure azure, AzureSettings azureSettings)
         {
-            var blackListedResourceGroupList = azureSettings.Chaos.BlackListedResourceGroups?.Split(',');
-            var specifiedResourceGroups = azureSettings.Chaos.ResourceGroups;
-
+            var blackListedResourceGroupList = azureSettings.Chaos.BlackListedResourceGroupList;
+            var inclusiveOnlyResourceGroupList = azureSettings.Chaos.InclusiveOnlyResourceGroupList;
             var resourceGroupList = azure.ResourceGroups.List();
-            if(blackListedResourceGroupList == null)
+            if (inclusiveOnlyResourceGroupList != null && inclusiveOnlyResourceGroupList.Count > 0)
+            {
+                return resourceGroupList.Where(x => inclusiveOnlyResourceGroupList.Contains(x.Name, StringComparer.OrdinalIgnoreCase)).ToList();
+            }
+            else if (blackListedResourceGroupList != null && blackListedResourceGroupList.Count > 0)
+            {
+                return resourceGroupList.Where(x => !blackListedResourceGroupList.Contains(x.Name, StringComparer.OrdinalIgnoreCase)).ToList();
+            }
+            else
             {
                 return resourceGroupList.ToList();
             }
-
-            var resourceGroups = resourceGroupList.Where(x => blackListedResourceGroupList.Contains(x.Name, StringComparer.OrdinalIgnoreCase));
-            if (string.IsNullOrWhiteSpace(specifiedResourceGroups))
-            {
-                return resourceGroups.ToList();
-            }
-
-            var includedResourceGroups = specifiedResourceGroups.Split(',');
-            if (includedResourceGroups != null && includedResourceGroups[0].Equals("all", StringComparison.OrdinalIgnoreCase))
-            {
-                return resourceGroups.ToList();
-            }
-
-            resourceGroups = resourceGroups.Where(x => includedResourceGroups.Contains(x.Name, StringComparer.OrdinalIgnoreCase));
-            return resourceGroups.ToList();
         }
     }
 }

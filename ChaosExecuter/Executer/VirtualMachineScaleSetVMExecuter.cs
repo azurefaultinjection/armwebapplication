@@ -15,10 +15,6 @@ namespace ChaosExecuter.Executer
 {
     public static class VirtualMachineScaleSetVmExecuter
     {
-        /// <summary>Azure Configuration.</summary>
-        private static readonly AzureClient AzureClient = new AzureClient();
-
-        private static readonly IStorageAccountProvider StorageProvider = new StorageAccountProvider();
         private const string FunctionName = "scalesetvmexecuter";
 
         [FunctionName("scalesetvmexecuter")]
@@ -32,7 +28,6 @@ namespace ChaosExecuter.Executer
 
             var azureSettings = AzureClient.AzureSettings;
             EventActivity eventActivity = new EventActivity(inputObject.ResourceGroup);
-            var storageAccount = StorageProvider.CreateOrGetStorageAccount(AzureClient);
             try
             {
                 var scaleSetVm = await GetVirtualMachineScaleSetVm(AzureClient.AzureInstance, inputObject, log);
@@ -54,12 +49,12 @@ namespace ChaosExecuter.Executer
                     log.Info($"VM ScaleSet- Invalid action: " + inputObject.Action);
                     eventActivity.Status = Status.Failed.ToString();
                     eventActivity.Warning = "Invalid Action";
-                    await StorageProvider.InsertOrMergeAsync(eventActivity, storageAccount, azureSettings.ActivityLogTable);
+                    StorageAccountProvider.InsertOrMerge(eventActivity, azureSettings.ActivityLogTable);
                     return false;
                 }
 
                 eventActivity.Status = Status.Started.ToString();
-                await StorageProvider.InsertOrMergeAsync(eventActivity, storageAccount, azureSettings.ActivityLogTable);
+                StorageAccountProvider.InsertOrMerge(eventActivity, azureSettings.ActivityLogTable);
                 await PerformChaos(inputObject.Action, scaleSetVm, eventActivity);
                 scaleSetVm = await scaleSetVm.RefreshAsync();
                 if (scaleSetVm != null)
@@ -68,7 +63,7 @@ namespace ChaosExecuter.Executer
                     eventActivity.FinalState = scaleSetVm.PowerState.Value;
                 }
 
-                await StorageProvider.InsertOrMergeAsync(eventActivity, storageAccount, azureSettings.ActivityLogTable);
+                StorageAccountProvider.InsertOrMerge(eventActivity, azureSettings.ActivityLogTable);
                 log.Info($"VM ScaleSet Chaos Completed");
                 return true;
             }
@@ -76,7 +71,7 @@ namespace ChaosExecuter.Executer
             {
                 eventActivity.Error = ex.Message;
                 eventActivity.Status = Status.Failed.ToString();
-                await StorageProvider.InsertOrMergeAsync(eventActivity, storageAccount, azureSettings.ActivityLogTable);
+                StorageAccountProvider.InsertOrMerge(eventActivity, azureSettings.ActivityLogTable);
 
                 // dont throw the error here just handle the error and return the false
                 log.Error($"VM ScaleSet Chaos trigger function threw the exception ", ex, FunctionName);

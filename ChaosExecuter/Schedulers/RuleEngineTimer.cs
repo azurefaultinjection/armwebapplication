@@ -2,7 +2,6 @@ using AzureChaos.Core.Enums;
 using AzureChaos.Core.Helper;
 using AzureChaos.Core.Interfaces;
 using AzureChaos.Core.Models;
-using AzureChaos.Core.Providers;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Host;
 using System;
@@ -12,9 +11,6 @@ namespace ChaosExecuter.Schedulers
 {
     public static class RuleEngineTimer
     {
-        private static readonly AzureClient AzureClient = new AzureClient();
-        private static readonly IStorageAccountProvider StorageProvider = new StorageAccountProvider();
-
         [FunctionName("RuleEngineTimer")]
         public static void Run([TimerTrigger("0 0 * * * *")]TimerInfo myTimer, TraceWriter log)
         {
@@ -26,7 +22,7 @@ namespace ChaosExecuter.Schedulers
                 return;
             }
 
-            var enabledChaos = RuleEngineHelper.GetEnabledChaosSet(StorageProvider, AzureClient);
+            var enabledChaos = RuleEngineHelper.GetEnabledChaosSet(azureSettings);
             if (enabledChaos == null || !enabledChaos.Any())
             {
                 log.Info("C# RuleEngine: Chaos is not enabled on any resources.");
@@ -40,22 +36,22 @@ namespace ChaosExecuter.Schedulers
                 case VirtualMachineGroup.VirtualMachines:
                     log.Info("C# RuleEngine: Virtual Machine Rule engine got picked");
                     IRuleEngine vm = new VirtualMachineRuleEngine();
-                    vm.CreateRule(AzureClient, log);
+                    vm.CreateRule(log);
                     break;
                 case VirtualMachineGroup.AvailabilitySets:
                     log.Info("C# RuleEngine: AvailabilitySets Rule engine got picked");
                     IRuleEngine availabilityset = new AvailabilitySetRuleEngine();
-                    availabilityset.CreateRule(AzureClient, log);
+                    availabilityset.CreateRule(log);
                     break;
                 case VirtualMachineGroup.ScaleSets:
                     log.Info("C# RuleEngine: ScaleSets Rule engine got picked");
                     IRuleEngine vmss = new ScaleSetRuleEngine();
-                    vmss.CreateRule(AzureClient, log);
+                    vmss.CreateRule(log);
                     break;
                 case VirtualMachineGroup.AvailabilityZones:
                     log.Info("C# RuleEngine: AvailabilityZones Rule engine got picked");
                     IRuleEngine availabilityZone = new AvailabilityZoneRuleEngine();
-                    availabilityZone.CreateRule(AzureClient, log);
+                    availabilityZone.CreateRule(log);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException();

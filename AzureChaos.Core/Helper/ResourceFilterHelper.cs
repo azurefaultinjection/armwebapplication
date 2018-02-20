@@ -1,11 +1,9 @@
 ﻿using AzureChaos.Core.Models.Configs;
 using AzureChaos.Core.Providers;
-using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 
 namespace AzureChaos.Core.Helper
 {
@@ -33,63 +31,31 @@ namespace AzureChaos.Core.Helper
             }
         }
 
-        public static List<T> QueryByMeanTime<T>(CloudStorageAccount storageAccount, IStorageAccountProvider storageAccountProvider,
-            AzureSettings azureSettings, string tableName, string filter = "") where T : ITableEntity, new()
+        public static List<T> QueryByMeanTime<T>(AzureSettings azureSettings, string tableName, string filter = "") where T : ITableEntity, new()
         {
             var tableQuery = new TableQuery<T>();
             tableQuery = tableQuery.Where(GetInsertionDatetimeFilter(azureSettings, filter));
-            var resultsSet = storageAccountProvider.GetEntities(tableQuery, storageAccount, tableName);
+            var resultsSet = StorageAccountProvider.GetEntities(tableQuery, tableName);
             return resultsSet.ToList();
         }
 
-        public static async Task<List<T>> QueryByMeanTimeAsync<T>(CloudStorageAccount storageAccount, IStorageAccountProvider storageAccountProvider,
-            AzureSettings azureSettings, string tableName, string filter = "") where T : ITableEntity, new()
-        {
-            var tableQuery = new TableQuery<T>();
-            tableQuery = tableQuery.Where(GetInsertionDatetimeFilter(azureSettings, filter));
-            var resultsSet = await storageAccountProvider.GetEntitiesAsync(tableQuery, storageAccount, tableName);
-            return resultsSet.ToList();
-        }
-
-        public static List<T> QueryByPartitionKey<T>(CloudStorageAccount storageAccount, IStorageAccountProvider storageAccountProvider,
-          string partitionKey, string tableName) where T : ITableEntity, new()
+        public static List<T> QueryByPartitionKey<T>(string partitionKey, string tableName) where T : ITableEntity, new()
         {
             var tableQuery = new TableQuery<T>();
             tableQuery = tableQuery.Where(TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, partitionKey));
-            var resultsSet = storageAccountProvider.GetEntities(tableQuery, storageAccount, tableName);
+            var resultsSet = StorageAccountProvider.GetEntities(tableQuery, tableName);
             return resultsSet.ToList();
         }
 
-        public static async Task<List<T>> QueryByPartitionKeyAsync<T>(CloudStorageAccount storageAccount, IStorageAccountProvider storageAccountProvider,
-         string partitionKey, string tableName) where T : ITableEntity, new()
-        {
-            var tableQuery = new TableQuery<T>();
-            tableQuery = tableQuery.Where(TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, partitionKey));
-            var resultsSet = await storageAccountProvider.GetEntitiesAsync(tableQuery, storageAccount, tableName);
-            return resultsSet.ToList();
-        }
 
-        public static List<T> QueryByPartitionKeyAndRowKey<T>(CloudStorageAccount storageAccount, IStorageAccountProvider storageAccountProvider,
-            string partitionKey, string rowKey, string tableName) where T : ITableEntity, new()
+        public static List<T> QueryByPartitionKeyAndRowKey<T>(string partitionKey, string rowKey, string tableName) where T : ITableEntity, new()
         {
             var tableQuery = new TableQuery<T>();
             var dateFilter = TableQuery.CombineFilters(TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, partitionKey),
                 TableOperators.And,
                 TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, rowKey));
             tableQuery = tableQuery.Where(dateFilter);
-            var resultsSet = storageAccountProvider.GetEntities(tableQuery, storageAccount, tableName);
-            return resultsSet.ToList();
-        }
-
-        public static async Task<List<T>> QueryByPartitionKeyAndRowKeyAsync<T>(CloudStorageAccount storageAccount, IStorageAccountProvider storageAccountProvider,
-            string partitionKey, string rowKey, string tableName) where T : ITableEntity, new()
-        {
-            TableQuery<T> tableQuery = new TableQuery<T>();
-            var dateFilter = TableQuery.CombineFilters(TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, partitionKey),
-                TableOperators.And,
-                TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, rowKey));
-            tableQuery = tableQuery.Where(dateFilter);
-            var resultsSet = await storageAccountProvider.GetEntitiesAsync(tableQuery, storageAccount, tableName);
+            var resultsSet = StorageAccountProvider.GetEntities(tableQuery, tableName);
             return resultsSet.ToList();
         }
 

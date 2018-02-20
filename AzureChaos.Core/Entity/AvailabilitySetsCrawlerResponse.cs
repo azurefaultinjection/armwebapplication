@@ -14,8 +14,7 @@ namespace AzureChaos.Core.Entity
         }
 
         [Required] public string Key { get; set; }
-
-        /// <summary>Triggered Event </summary>
+        
         public bool HasVirtualMachines { get; set; }
 
         [Required] public int FaultDomainCount { get; set; }

@@ -19,10 +19,6 @@ namespace ChaosExecuter.Executer
     /// </summary>
     public static class VirtualMachineExecuter
     {
-        /// <summary>Azure Configuration.</summary>
-        private static readonly AzureClient AzureClient = new AzureClient();
-
-        private static readonly IStorageAccountProvider StorageProvider = new StorageAccountProvider();
         private const string FunctionName = "vmexecuter";
 
         /// <summary>Chaos executer on the Virtual Machines.</summary>
@@ -40,7 +36,6 @@ namespace ChaosExecuter.Executer
 
             var azureSettings = AzureClient.AzureSettings;
             EventActivity eventActivity = new EventActivity(inputObject.ResourceName);
-            var storageAccount = StorageProvider.CreateOrGetStorageAccount(AzureClient);
             try
             {
                 IVirtualMachine virtualMachine = await GetVirtualMachine(AzureClient.AzureInstance, inputObject, log);
@@ -57,7 +52,7 @@ namespace ChaosExecuter.Executer
                     log.Info($"VM Chaos :  The vm '" + inputObject.ResourceName + "' is in the state of " + virtualMachine.ProvisioningState + ", so cannont perform the same action " + inputObject.Action);
                     eventActivity.Status = Status.Failed.ToString();
                     eventActivity.Error = "Vm provisioning state and action both are same, so couldnot perform the action";
-                    await StorageProvider.InsertOrMergeAsync(eventActivity, storageAccount, azureSettings.ActivityLogTable);
+                    StorageAccountProvider.InsertOrMerge(eventActivity, azureSettings.ActivityLogTable);
                     return false;
                 }
 
@@ -70,12 +65,12 @@ namespace ChaosExecuter.Executer
                     log.Info($"VM Chaos- Invalid action: " + inputObject.Action);
                     eventActivity.Status = Status.Failed.ToString();
                     eventActivity.Warning = "Invalid Action";
-                    await StorageProvider.InsertOrMergeAsync(eventActivity, storageAccount, azureSettings.ActivityLogTable);
+                    StorageAccountProvider.InsertOrMerge(eventActivity, azureSettings.ActivityLogTable);
                     return false;
                 }
 
                 eventActivity.Status = Status.Started.ToString();
-                await StorageProvider.InsertOrMergeAsync(eventActivity, storageAccount, azureSettings.ActivityLogTable);
+                StorageAccountProvider.InsertOrMerge(eventActivity, azureSettings.ActivityLogTable);
                 await PerformChaos(inputObject.Action, virtualMachine, eventActivity);
                 virtualMachine = await GetVirtualMachine(AzureClient.AzureInstance, inputObject, log);
                 if (virtualMachine != null)
@@ -84,7 +79,7 @@ namespace ChaosExecuter.Executer
                     eventActivity.FinalState = virtualMachine.PowerState.Value;
                 }
 
-                await StorageProvider.InsertOrMergeAsync(eventActivity, storageAccount, azureSettings.ActivityLogTable);
+                StorageAccountProvider.InsertOrMerge(eventActivity, azureSettings.ActivityLogTable);
                 log.Info($"VM Chaos Completed");
                 return true;
             }
@@ -92,7 +87,7 @@ namespace ChaosExecuter.Executer
             {
                 eventActivity.Error = ex.Message;
                 eventActivity.Status = Status.Failed.ToString();
-                await StorageProvider.InsertOrMergeAsync(eventActivity, storageAccount, azureSettings.ActivityLogTable);
+                StorageAccountProvider.InsertOrMerge(eventActivity, azureSettings.ActivityLogTable);
 
                 // dont throw the error here just handle the error and return the false
                 log.Error($"VM Chaos trigger function threw the exception ", ex, FunctionName);
