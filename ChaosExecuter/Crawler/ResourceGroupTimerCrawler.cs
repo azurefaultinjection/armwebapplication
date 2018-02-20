@@ -1,6 +1,6 @@
 using AzureChaos.Core.Entity;
+using AzureChaos.Core.Constants;
 using AzureChaos.Core.Helper;
-using AzureChaos.Core.Models;
 using AzureChaos.Core.Providers;
 using Microsoft.Azure.Management.ResourceManager.Fluent;
 using Microsoft.Azure.WebJobs;
@@ -18,11 +18,11 @@ namespace ChaosExecuter.Crawler
         public static async Task Run([TimerTrigger("0 */2 * * * *")]TimerInfo myTimer, TraceWriter log)
         {
             log.Info($"timercrawlerresourcegroups executed at: {DateTime.UtcNow}");
-            var azureSettings = AzureClient.AzureSettings;
             try
             {
-                var resourceGroups = ResourceGroupHelper.GetResourceGroupsInSubscription(AzureClient.AzureInstance, azureSettings);
-                await InsertOrReplaceResourceGroupsAsync(resourceGroups, log, azureSettings.ResourceGroupCrawlerTableName);
+                var resourceGroups = ResourceGroupHelper.GetResourceGroupsInSubscription();
+                //Todo make it as Sync
+                await InsertOrReplaceResourceGroupsAsync(resourceGroups, log); //Can we make it as task.run ??
             }
             catch (Exception ex)
             {
@@ -30,17 +30,17 @@ namespace ChaosExecuter.Crawler
             }
         }
 
-        private static async Task InsertOrReplaceResourceGroupsAsync(List<IResourceGroup> resourceGroups, TraceWriter log, string resourceGroupCrawlerTableName)
+        private static async Task InsertOrReplaceResourceGroupsAsync(List<IResourceGroup> resourceGroups, TraceWriter log)
         {
-            var batchOperation = new TableBatchOperation();
-            Parallel.ForEach(resourceGroups, resourceGroup =>
+            var tableBatchOperation = new TableBatchOperation();
+            Parallel.ForEach(resourceGroups, eachResourceGroup =>
             {
-                var resourceGroupCrawlerResponseEntity = new ResourceGroupCrawlerResponse("", resourceGroup.Name);
+                var resourceGroupCrawlerResponseEntity = new ResourceGroupCrawlerResponse("", eachResourceGroup.Name);
                 try
                 {
-                    resourceGroupCrawlerResponseEntity.ResourceGroupId = resourceGroup.Id;
-                    resourceGroupCrawlerResponseEntity.RegionName = resourceGroup.RegionName;
-                    batchOperation.InsertOrReplace(resourceGroupCrawlerResponseEntity);
+                    resourceGroupCrawlerResponseEntity.Id = eachResourceGroup.Id;
+                    resourceGroupCrawlerResponseEntity.RegionName = eachResourceGroup.RegionName;
+                    tableBatchOperation.InsertOrReplace(resourceGroupCrawlerResponseEntity);
                 }
                 catch (Exception ex)
                 {
@@ -48,13 +48,12 @@ namespace ChaosExecuter.Crawler
                     log.Error($"timercrawlerresourcegroups threw exception ", ex, "timercrawlerresourcegroups");
                 }
             });
-            if (batchOperation.Count > 0)
+            if (tableBatchOperation.Count > 0)
             {
                 try
                 {
-                    var table = StorageAccountProvider.CreateOrGetTable(
-                        resourceGroupCrawlerTableName);
-                    await table.ExecuteBatchAsync(batchOperation);
+                    var table = StorageAccountProvider.CreateOrGetTable(StorageTableNames.ResourceGroupCrawlerTableName);
+                    await table.ExecuteBatchAsync(tableBatchOperation);
                 }
                 catch (Exception ex)
                 {

@@ -13,19 +13,17 @@ namespace AzureChaos.Core.Constants
                 { VirtualMachineGroup.AvailabilitySets, azureSettings.Chaos.AvailabilitySetChaos.Enabled},
                 { VirtualMachineGroup.VirtualMachines, azureSettings.Chaos.VirtualMachineChaos.Enabled},
                 { VirtualMachineGroup.AvailabilityZones, azureSettings.Chaos.AvailabilityZoneChaos.Enabled},
-                { VirtualMachineGroup.ScaleSets, azureSettings.Chaos.ScaleSetChaos.Enabled}
+                { VirtualMachineGroup.VirtualMachineScaleSets, azureSettings.Chaos.ScaleSetChaos.Enabled}
             };
         }
 
         public static Dictionary<string, string> FunctionNameMap = new Dictionary<string, string>()
         {
-            { VirtualMachineGroup.VirtualMachines.ToString(), "vmexecuter" },
-            { VirtualMachineGroup.ScaleSets.ToString(), "scalesetvmexecuter" },
-            { VirtualMachineGroup.AvailabilitySets.ToString(), "vmexecuter" },
-            { VirtualMachineGroup.AvailabilityZones.ToString(), "vmexecuter" },
+            { VirtualMachineGroup.VirtualMachines.ToString(), "virtualmachinesexecuter" },
+            { VirtualMachineGroup.VirtualMachineScaleSets.ToString(), "virtualmachinescalesetexecuter" },
+            { VirtualMachineGroup.AvailabilitySets.ToString(), "VirtualMachinesExecuter" },
+            { VirtualMachineGroup.AvailabilityZones.ToString(), "virtualmachinesexecuter" },
         };
-
-
 
         ///Microsoft subscription blob endpoint for configs:  https://chaostest.blob.core.windows.net/config/azuresettings.json
         ///Zen3 subscription blob endpoint for configs: ==>  https://cmonkeylogs.blob.core.windows.net/configs/azuresettings.json

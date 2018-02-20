@@ -10,7 +10,6 @@ namespace AzureChaos.Core.Models.Configs
         [JsonProperty("ChaosConfig")]
         public ChaosConfig Chaos { get; set; }
 
-        /// <summary> Do we keep these storage account table information in the Config files OR will keep as constant name?</summary>
         [JsonProperty("microsoft.chaos.client.table.resourceGroupCrawler")]
         public string ResourceGroupCrawlerTableName { get; set; }
 

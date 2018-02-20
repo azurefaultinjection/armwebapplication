@@ -49,7 +49,7 @@ namespace AzureChaos.Core.Interfaces
                 {
                     var randomSets = filteredVmSet.Take(count).ToList();
                     filteredVmSet = filteredVmSet.Except(randomSets).ToList();
-                    var batchOperation = VirtualMachineHelper.CreateScheduleEntity(randomSets, _azureSettings.Chaos.SchedulerFrequency, VirtualMachineGroup.ScaleSets);
+                    var batchOperation = VirtualMachineHelper.CreateScheduleEntity(randomSets, _azureSettings.Chaos.SchedulerFrequency, VirtualMachineGroup.VirtualMachineScaleSets);
 
                     var operation = batchOperation;
                     tasks.Add(table.ExecuteBatchAsync(operation));
@@ -66,10 +66,10 @@ namespace AzureChaos.Core.Interfaces
 
         /// <summary>Pick the random scale set.</summary>
         /// <returns></returns>
-        private static VmScaleSetCrawlerResponse GetRandomScaleSet()
+        private static VirtualMachineScaleSetCrawlerResponse GetRandomScaleSet()
         {
             var filter = TableQuery.GenerateFilterConditionForBool("HasVirtualMachines", QueryComparisons.Equal, true);
-            var resultsSet = ResourceFilterHelper.QueryByMeanTime<VmScaleSetCrawlerResponse>(_azureSettings,
+            var resultsSet = ResourceFilterHelper.QueryByMeanTime<VirtualMachineScaleSetCrawlerResponse>(_azureSettings,
                _azureSettings.ScaleSetCrawlerTableName, filter);
 
             if (resultsSet == null || !resultsSet.Any())

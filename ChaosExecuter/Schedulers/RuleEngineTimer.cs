@@ -38,21 +38,25 @@ namespace ChaosExecuter.Schedulers
                     IRuleEngine vm = new VirtualMachineRuleEngine();
                     vm.CreateRule(log);
                     break;
+
                 case VirtualMachineGroup.AvailabilitySets:
                     log.Info("C# RuleEngine: AvailabilitySets Rule engine got picked");
                     IRuleEngine availabilityset = new AvailabilitySetRuleEngine();
                     availabilityset.CreateRule(log);
                     break;
-                case VirtualMachineGroup.ScaleSets:
+
+                case VirtualMachineGroup.VirtualMachineScaleSets:
                     log.Info("C# RuleEngine: ScaleSets Rule engine got picked");
                     IRuleEngine vmss = new ScaleSetRuleEngine();
                     vmss.CreateRule(log);
                     break;
+
                 case VirtualMachineGroup.AvailabilityZones:
                     log.Info("C# RuleEngine: AvailabilityZones Rule engine got picked");
                     IRuleEngine availabilityZone = new AvailabilityZoneRuleEngine();
                     availabilityZone.CreateRule(log);
                     break;
+
                 default:
                     throw new ArgumentOutOfRangeException();
             }

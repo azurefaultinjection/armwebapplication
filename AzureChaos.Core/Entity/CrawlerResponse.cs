@@ -12,8 +12,6 @@ namespace AzureChaos.Core.Entity
 
         [Required] public string ResourceGroupName { get; set; }
 
-        [Required] public DateTime EntryInsertionTime { get; set; }
-
         /// <summary>Resource Id </summary>
         public string Id { get; set; }
 

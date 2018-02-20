@@ -9,7 +9,7 @@
         AvailabilitySets,
 
         /// <summary>Virtual Machines in Scale Sets</summary>
-        ScaleSets,
+        VirtualMachineScaleSets,
 
         /// <summary>Virtual Machines in Load Balancer</summary>
         LoadBalancer,

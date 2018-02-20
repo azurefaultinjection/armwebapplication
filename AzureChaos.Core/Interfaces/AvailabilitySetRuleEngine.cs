@@ -145,6 +145,7 @@ namespace AzureChaos.Core.Interfaces
             recentlyExecutedAvailabilitySetDomainCombination = new List<string>(possibleAvailabilitySetDomainCombinationVmCount.Keys);
             return recentlyExecutedAvailabilitySetDomainCombination;
         }
+
         private List<string> GetPossibleAvailabilitySets()
         {
             var availabilitySetQuery = TableQuery.GenerateFilterConditionForBool("HasVirtualMachines", QueryComparisons.Equal, true);
@@ -180,11 +181,11 @@ namespace AzureChaos.Core.Interfaces
                 string entryIntoPossibleAvailabilitySetDomainCombinationVmCount;
                 if (_azureSettings.Chaos.AvailabilitySetChaos.FaultDomainEnabled)
                 {
-                    entryIntoPossibleAvailabilitySetDomainCombinationVmCount = eachVirtualMachine.AvailableSetId + "@" + eachVirtualMachine.FaultDomain;
+                    entryIntoPossibleAvailabilitySetDomainCombinationVmCount = eachVirtualMachine.AvailabilitySetId + "@" + eachVirtualMachine.FaultDomain;
                 }
                 else
                 {
-                    entryIntoPossibleAvailabilitySetDomainCombinationVmCount = eachVirtualMachine.AvailableSetId + "@" + eachVirtualMachine.UpdateDomain;
+                    entryIntoPossibleAvailabilitySetDomainCombinationVmCount = eachVirtualMachine.AvailabilitySetId + "@" + eachVirtualMachine.UpdateDomain;
                 }
 
                 if (possibleAvailabilitySetDomainCombinationVmCount.ContainsKey(entryIntoPossibleAvailabilitySetDomainCombinationVmCount))

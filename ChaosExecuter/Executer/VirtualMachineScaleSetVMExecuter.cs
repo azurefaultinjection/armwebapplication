@@ -33,7 +33,7 @@ namespace ChaosExecuter.Executer
                 var scaleSetVm = await GetVirtualMachineScaleSetVm(AzureClient.AzureInstance, inputObject, log);
                 if (scaleSetVm == null)
                 {
-                    log.Info($"VM Scaleset Chaos : No resource found for the  scale set id: " + inputObject.ScalesetId);
+                    log.Info($"VM Scaleset Chaos : No resource found for the  scale set id: " + inputObject.VirtualMachineScaleSetId);
                     return false;
                 }
 
@@ -111,7 +111,7 @@ namespace ChaosExecuter.Executer
                     log.Error("Virtual Machine Resource Group is not valid resource group");
                     return false;
                 }
-                if (string.IsNullOrWhiteSpace(inputObject.ScalesetId))
+                if (string.IsNullOrWhiteSpace(inputObject.VirtualMachineScaleSetId))
                 {
                     log.Error("VMScaleset Id is not valid ");
                     return false;
@@ -137,10 +137,12 @@ namespace ChaosExecuter.Executer
             {
                 case ActionType.Start:
                     return state != PowerState.Running && state != PowerState.Starting;
+
                 case ActionType.Stop:
                 case ActionType.PowerOff:
                 case ActionType.Restart:
                     return state != PowerState.Stopping && state != PowerState.Stopped;
+
                 default:
                     return false;
             }
@@ -194,10 +196,10 @@ namespace ChaosExecuter.Executer
         /// <returns>Returns the virtual machine.</returns>
         private static async Task<IVirtualMachineScaleSetVM> GetVirtualMachineScaleSetVm(IAzure azure, InputObject inputObject, TraceWriter log)
         {
-            var vmScaleSet = await azure.VirtualMachineScaleSets.GetByIdAsync(inputObject.ScalesetId);
+            var vmScaleSet = await azure.VirtualMachineScaleSets.GetByIdAsync(inputObject.VirtualMachineScaleSetId);
             if (vmScaleSet == null)
             {
-                log.Info("VM Scaleset Chaos: scale set is returning null for the Id: " + inputObject.ScalesetId);
+                log.Info("VM Scaleset Chaos: scale set is returning null for the Id: " + inputObject.VirtualMachineScaleSetId);
                 return null;
             }
 
@@ -210,7 +212,6 @@ namespace ChaosExecuter.Executer
 
             log.Info("VM Scaleset Chaos: scale set vm's are empty");
             return null;
-
         }
     }
 }

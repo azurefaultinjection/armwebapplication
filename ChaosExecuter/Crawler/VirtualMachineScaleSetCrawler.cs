@@ -3,7 +3,6 @@ using AzureChaos.Core.Entity;
 using AzureChaos.Core.Enums;
 using AzureChaos.Core.Helper;
 using AzureChaos.Core.Models;
-using AzureChaos.Core.Models.Configs;
 using AzureChaos.Core.Providers;
 using Microsoft.Azure.Management.Compute.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent;
@@ -26,16 +25,14 @@ namespace ChaosExecuter.Crawler
         public static async Task Run([HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)]HttpRequestMessage req, TraceWriter log)
         {
             log.Info("C# HTTP trigger function processed a request.");
-
-            var azureSettings = AzureClient.AzureSettings;
-            var resourceGroupList = ResourceGroupHelper.GetResourceGroupsInSubscription(AzureClient.AzureInstance, azureSettings);
+            var resourceGroupList = ResourceGroupHelper.GetResourceGroupsInSubscription();
             if (resourceGroupList == null)
             {
                 log.Info($"timercrawlerforvirtualmachinescaleset: no resource groups to crawl");
                 return;
             }
 
-            await GetScaleSetsForResourceGroupsAsync(resourceGroupList, log, AzureClient.AzureSettings);
+            await GetScaleSetsForResourceGroupsAsync(resourceGroupList, log);
         }
 
         /// <summary>1. Iterate the resource groups to get the scale sets for individual resource group.
@@ -44,41 +41,41 @@ namespace ChaosExecuter.Crawler
         /// 3. Execute all the task parallely</summary>
         /// <param name="resourceGroups">List of resource groups for the particular subscription.</param>
         /// <param name="log">Trace writer instance</param>
-        /// <param name="azureSettings">Azure settings configuration to get the table name of scale set and virtual machine.</param>
         private static async Task GetScaleSetsForResourceGroupsAsync(IEnumerable<IResourceGroup> resourceGroups,
-            TraceWriter log, AzureSettings azureSettings)
+                                                                     TraceWriter log)
         {
             try
             {
-                var vmTable = StorageAccountProvider.CreateOrGetTableAsync(azureSettings.VirtualMachineCrawlerTableName);
-                var scaleSetTable = StorageAccountProvider.CreateOrGetTableAsync(azureSettings.ScaleSetCrawlerTableName);
+                var virtualMachineCloudTable = StorageAccountProvider.CreateOrGetTableAsync(StorageTableNames.VirtualMachineCrawlerTableName);
+                var virtualMachineScaleSetTable = StorageAccountProvider.CreateOrGetTableAsync(StorageTableNames.VirtualMachinesScaleSetCrawlerTableName);
 
-                await Task.WhenAll(vmTable, scaleSetTable);
+                await Task.WhenAll(virtualMachineCloudTable, virtualMachineScaleSetTable);
 
                 var batchTasks = new ConcurrentBag<Task>();
                 // using parallel here to run all the resource groups parallelly, parallel is 10times faster than normal foreach.
-                Parallel.ForEach(resourceGroups, resourceGroup =>
+                Parallel.ForEach(resourceGroups, eachResourceGroup =>
                 {
                     try
                     {
-                        var scaleSetsList = AzureClient.AzureInstance.VirtualMachineScaleSets
-                            .ListByResourceGroup(resourceGroup.Name);
-                        GetVirtualMachineAndScaleSetBatch(scaleSetsList, batchTasks, vmTable.Result,
-                            scaleSetTable.Result, log);
+                        var virtualMachineScaleSetsList = AzureClient.AzureInstance.VirtualMachineScaleSets
+                                                          .ListByResourceGroup(eachResourceGroup.Name);
+                        GetVirtualMachineAndScaleSetBatch(virtualMachineScaleSetsList, batchTasks,
+                                                          virtualMachineCloudTable.Result,
+                                                          virtualMachineScaleSetTable.Result, log);
                     }
                     catch (Exception e)
                     {
                         //  catch the error, to continue adding other entities to table
-                        log.Error($"timercrawlerforvirtualmachinescaleset threw the exception ", e, "GetScaleSetsForResourceGroups: for the resource group " + resourceGroup.Name);
+                        log.Error($"timercrawlerforvirtualmachinescaleset threw the exception ", e, "GetScaleSetsForResourceGroups: for the resource group " + eachResourceGroup.Name);
                     }
                 });
 
                 // execute all batch operation as parallel
-                Parallel.ForEach(batchTasks, new ParallelOptions { MaxDegreeOfParallelism = 20 }, (task) =>
+                Parallel.ForEach(batchTasks, new ParallelOptions { MaxDegreeOfParallelism = 20 }, (eachTask) =>
                 {
                     try
                     {
-                        Task.WhenAll(task);
+                        Task.WhenAll(eachTask);
                     }
                     catch (Exception e)
                     {
@@ -95,33 +92,30 @@ namespace ChaosExecuter.Crawler
         /// <summary>1. Get the List of scale sets for the resource group.
         /// 2. Get all the virtual machines from the each scale set and them into batch operation
         /// 3. Combine all the tasks and return the list of tasks.</summary>
-        /// <param name="scaleSets">List of scale sets for the resource group</param>
+        /// <param name="virtualMachineScaleSets">List of scale sets for the resource group</param>
         /// <param name="batchTasks"></param>
-        /// <param name="vmTable">Get the virtual machine table instance</param>
-        /// <param name="scaleSetTable">Get the scale set table instance</param>
+        /// <param name="virtualMachineCloudTable">Get the virtual machine table instance</param>
+        /// <param name="virtualMachineScaleSetCloudTable">Get the scale set table instance</param>
         /// <param name="log">Trace writer instance</param>
         /// <returns></returns>
-        private static void GetVirtualMachineAndScaleSetBatch(
-            IEnumerable<IVirtualMachineScaleSet> scaleSets,
-            ConcurrentBag<Task> batchTasks,
-            CloudTable vmTable,
-            CloudTable scaleSetTable,
-            TraceWriter log)
+        private static void GetVirtualMachineAndScaleSetBatch(IEnumerable<IVirtualMachineScaleSet> virtualMachineScaleSets,
+                                                              ConcurrentBag<Task> batchTasks, CloudTable virtualMachineCloudTable,
+                                                              CloudTable virtualMachineScaleSetCloudTable, TraceWriter log)
         {
-            if (scaleSets == null || vmTable == null || scaleSetTable == null)
+            if (virtualMachineScaleSets == null || virtualMachineCloudTable == null || virtualMachineScaleSetCloudTable == null)
             {
                 return;
             }
 
-            var scaleSetbatchOperation = new TableBatchOperation();
+            var virtualMachineScleSetTableBatchOperation = new TableBatchOperation();
             // get the batch operation for all the scale sets and corresponding virtual machine instances
-            Parallel.ForEach(scaleSets, scaleSet =>
+            Parallel.ForEach(virtualMachineScaleSets, eachVirtualMachineScaleSet =>
             {
                 try
                 {
-                    scaleSetbatchOperation.InsertOrReplace(ConvertToVmScaleSetCrawlerResponse(scaleSet));
+                    virtualMachineScleSetTableBatchOperation.InsertOrReplace(ConvertToVirtualMachineScaleSetCrawlerResponse(eachVirtualMachineScaleSet));
 
-                    var availabilityZone = scaleSet.AvailabilityZones?.FirstOrDefault()?.Value;
+                    var availabilityZone = eachVirtualMachineScaleSet.AvailabilityZones?.FirstOrDefault()?.Value;
                     int? zoneId = null;
                     if (!string.IsNullOrWhiteSpace(availabilityZone))
                     {
@@ -129,25 +123,25 @@ namespace ChaosExecuter.Crawler
                     }
 
                     // get the scale set instances
-                    var vmBatchOperation = GetVirtualMachineBatchOperation(scaleSet.VirtualMachines.List(),
-                        scaleSet.ResourceGroupName,
-                        scaleSet.Id, zoneId);
-                    if (vmBatchOperation != null && vmBatchOperation.Count > 0)
+                    var virtualMachinesBatchOperation = GetVirtualMachineBatchOperation(eachVirtualMachineScaleSet.VirtualMachines.List(),
+                                                                                        eachVirtualMachineScaleSet.ResourceGroupName,
+                                                                                        eachVirtualMachineScaleSet.Id, zoneId);
+                    if (virtualMachinesBatchOperation != null && virtualMachinesBatchOperation.Count > 0)
                     {
-                        batchTasks.Add(vmTable.ExecuteBatchAsync(vmBatchOperation));
+                        batchTasks.Add(virtualMachineCloudTable.ExecuteBatchAsync(virtualMachinesBatchOperation));
                     }
                 }
                 catch (Exception e)
                 {
                     //  catch the error, to continue adding other entities to table
                     log.Error($"timercrawlerforvirtualmachinescaleset threw the exception ", e,
-                        "GetVirtualMachineAndScaleSetBatch for the scale set: " + scaleSet.Name);
+                        "GetVirtualMachineAndScaleSetBatch for the scale set: " + eachVirtualMachineScaleSet.Name);
                 }
             });
 
-            if (scaleSetbatchOperation.Count > 0)
+            if (virtualMachineScleSetTableBatchOperation.Count > 0)
             {
-                batchTasks.Add(scaleSetTable.ExecuteBatchAsync(scaleSetbatchOperation));
+                batchTasks.Add(virtualMachineScaleSetCloudTable.ExecuteBatchAsync(virtualMachineScleSetTableBatchOperation));
             }
         }
 
@@ -158,48 +152,45 @@ namespace ChaosExecuter.Crawler
         /// <param name="availabilityZone">Availability zone id of the scale set</param>
         /// <returns></returns>
         private static TableBatchOperation GetVirtualMachineBatchOperation(IEnumerable<IVirtualMachineScaleSetVM> virtualMachines,
-            string resourceGroupName,
-            string scaleSetId,
-            int? availabilityZone)
+                                                                           string resourceGroupName, string scaleSetId,
+                                                                           int? availabilityZone)
         {
             if (virtualMachines == null)
             {
                 return null;
             }
 
-            var vmbatchOperation = new TableBatchOperation();
-            foreach (var instance in virtualMachines)
+            var virtualMachineBatchOperation = new TableBatchOperation();
+            foreach (var eachVirtualMachine in virtualMachines)
             {
                 // Azure table doesnot allow partition key  with forward slash
                 var partitionKey = scaleSetId.Replace(Delimeters.ForwardSlash, Delimeters.Exclamatory);
-                vmbatchOperation.InsertOrReplace(VirtualMachineHelper.ConvertToVirtualMachineEntity(instance,
-                    resourceGroupName,
-                    scaleSetId, partitionKey, availabilityZone, VirtualMachineGroup.ScaleSets.ToString()));
+                virtualMachineBatchOperation.InsertOrReplace(VirtualMachineHelper.ConvertToVirtualMachineEntity(eachVirtualMachine,
+                                                                                  resourceGroupName, scaleSetId, partitionKey,
+                                                                                  availabilityZone, VirtualMachineGroup.VirtualMachineScaleSets.ToString()));
             }
 
-            return vmbatchOperation;
+            return virtualMachineBatchOperation;
         }
 
         /// <summary>Convert the virtual machine scale set instance to scale set entity.</summary>
-        /// <param name="scaleSet">The scale set instance.</param>
+        /// <param name="virtualMachineScaleSet">The scale set instance.</param>
         /// <returns></returns>
-        private static VmScaleSetCrawlerResponse ConvertToVmScaleSetCrawlerResponse(IVirtualMachineScaleSet scaleSet)
+        private static VirtualMachineScaleSetCrawlerResponse ConvertToVirtualMachineScaleSetCrawlerResponse(IVirtualMachineScaleSet virtualMachineScaleSet)
         {
-            var scaleSetEntity = new VmScaleSetCrawlerResponse(scaleSet.ResourceGroupName, scaleSet.Id.Replace(Delimeters.ForwardSlash, Delimeters.Exclamatory))
+            var virtualMachineScaleSetEntity = new VirtualMachineScaleSetCrawlerResponse(virtualMachineScaleSet.ResourceGroupName, virtualMachineScaleSet.Id.Replace(Delimeters.ForwardSlash, Delimeters.Exclamatory))
             {
-                ResourceName = scaleSet.Name,
-                ResourceType = scaleSet.Type,
-                EntryInsertionTime = DateTime.UtcNow,
-                ResourceGroupName = scaleSet.ResourceGroupName,
-                RegionName = scaleSet.RegionName,
-                Id = scaleSet.Id
+                ResourceName = virtualMachineScaleSet.Name,
+                ResourceType = virtualMachineScaleSet.Type,
+                RegionName = virtualMachineScaleSet.RegionName,
+                Id = virtualMachineScaleSet.Id
             };
-            if (scaleSet.VirtualMachines != null && scaleSet.VirtualMachines.List().Any())
+            if (virtualMachineScaleSet.VirtualMachines != null && virtualMachineScaleSet.VirtualMachines.List().Any())
             {
-                scaleSetEntity.HasVirtualMachines = true;
+                virtualMachineScaleSetEntity.HasVirtualMachines = true;
             }
 
-            return scaleSetEntity;
+            return virtualMachineScaleSetEntity;
         }
     }
 }

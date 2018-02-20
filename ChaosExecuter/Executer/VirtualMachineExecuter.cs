@@ -19,17 +19,17 @@ namespace ChaosExecuter.Executer
     /// </summary>
     public static class VirtualMachineExecuter
     {
-        private const string FunctionName = "vmexecuter";
+        private const string FunctionName = "virtualmachinesexecuter";
 
         /// <summary>Chaos executer on the Virtual Machines.</summary>
         /// <param name="context"></param>
         /// <param name="log">The trace writer.</param>
         /// <returns>Returns the http response message.</returns>
-        [FunctionName("vmexecuter")]
+        [FunctionName("virtualmachinesexecuter")]
         public static async Task<bool> Run([OrchestrationTrigger] DurableOrchestrationContext context, TraceWriter log)
         {
-            var input = context.GetInput<string>();
-            if (!ValidateInput(input, log, out var inputObject))
+            var inputData = context.GetInput<string>();
+            if (!ValidateInput(inputData, log, out var inputObject))
             {
                 return false;
             }
@@ -38,7 +38,7 @@ namespace ChaosExecuter.Executer
             EventActivity eventActivity = new EventActivity(inputObject.ResourceName);
             try
             {
-                IVirtualMachine virtualMachine = await GetVirtualMachine(AzureClient.AzureInstance, inputObject, log);
+                IVirtualMachine virtualMachine = GetVirtualMachine(AzureClient.AzureInstance, inputObject);
                 if (virtualMachine == null)
                 {
                     log.Info($"VM Chaos : No resource found for the resource name : " + inputObject.ResourceName);
@@ -56,7 +56,7 @@ namespace ChaosExecuter.Executer
                     return false;
                 }
 
-                SetInitialEventActivity(virtualMachine, inputObject, eventActivity);
+                SetInitialEventActivity(virtualMachine, inputObject, eventActivity); // Why are we calling this are we noting it some where ?
 
                 // if its not valid chaos then update the event table with  warning message and return false
                 bool isValidChaos = IsValidChaos(inputObject.Action, virtualMachine.PowerState);
@@ -71,8 +71,9 @@ namespace ChaosExecuter.Executer
 
                 eventActivity.Status = Status.Started.ToString();
                 StorageAccountProvider.InsertOrMerge(eventActivity, azureSettings.ActivityLogTable);
-                await PerformChaos(inputObject.Action, virtualMachine, eventActivity);
-                virtualMachine = await GetVirtualMachine(AzureClient.AzureInstance, inputObject, log);
+                PerformChaosOnVirtualMachine(inputObject.Action, virtualMachine, eventActivity);
+                // Can we break from here to check the status later ?
+                virtualMachine = GetVirtualMachine(AzureClient.AzureInstance, inputObject);
                 if (virtualMachine != null)
                 {
                     eventActivity.EventCompletedDate = DateTime.UtcNow;
@@ -98,15 +99,15 @@ namespace ChaosExecuter.Executer
         }
 
         /// <summary>Validate the request input on this functions, and log the invalid.</summary>
-        /// <param name="input"></param>
+        /// <param name="inputData"></param>
         /// <param name="log"></param>
         /// <param name="inputObject"></param>
         /// <returns></returns>
-        private static bool ValidateInput(string input, TraceWriter log, out InputObject inputObject)
+        private static bool ValidateInput(string inputData, TraceWriter log, out InputObject inputObject)
         {
             try
             {
-                inputObject = JsonConvert.DeserializeObject<InputObject>(input);
+                inputObject = JsonConvert.DeserializeObject<InputObject>(inputData);
                 if (inputObject == null)
                 {
                     log.Error("input data is empty");
@@ -143,25 +144,25 @@ namespace ChaosExecuter.Executer
         /// <param name="virtualMachine">Virtual Machine</param>
         /// <param name="eventActivity">Event activity entity</param>
         /// <returns></returns>
-        private static async Task PerformChaos(ActionType actionType, IVirtualMachine virtualMachine, EventActivity eventActivity)
+        private static void PerformChaosOnVirtualMachine(ActionType actionType, IVirtualMachine virtualMachine, EventActivity eventActivity)
         {
             switch (actionType)
             {
                 case ActionType.Start:
-                    await virtualMachine.StartAsync();
+                    virtualMachine.StartAsync();
                     break;
 
                 case ActionType.PowerOff:
                 case ActionType.Stop:
-                    await virtualMachine.PowerOffAsync();
+                    virtualMachine.PowerOffAsync();
                     break;
 
                 case ActionType.Restart:
-                    await virtualMachine.RestartAsync();
+                    virtualMachine.RestartAsync();
                     break;
             }
 
-            eventActivity.Status = Status.Completed.ToString();
+            eventActivity.Status = Status.Executing.ToString();
         }
 
         /// <summary>Check the given action is valid chaos to perform on the vm</summary>
@@ -175,7 +176,7 @@ namespace ChaosExecuter.Executer
                 return state != PowerState.Running && state != PowerState.Starting;
             }
 
-            if (currentAction == ActionType.Stop || currentAction == ActionType.PowerOff || currentAction == ActionType.Restart)
+            if (currentAction == ActionType.Stop || currentAction == ActionType.PowerOff || currentAction == ActionType.Restart) // Restart on stop is a valid operation
             {
                 return state != PowerState.Stopping && state != PowerState.Stopped;
             }
@@ -201,18 +202,19 @@ namespace ChaosExecuter.Executer
         /// <summary>Get the virtual machine.</summary>
         /// <param name="azure"></param>
         /// <param name="inputObject"></param>
-        /// <param name="log"></param>
         /// <returns>Returns the virtual machine.</returns>
-        private static async Task<IVirtualMachine> GetVirtualMachine(IAzure azure, InputObject inputObject, TraceWriter log)
+        private static IVirtualMachine GetVirtualMachine(IAzure azure, InputObject inputObject)
         {
-            var virtualMachines = await azure.VirtualMachines.ListByResourceGroupAsync(inputObject.ResourceGroup);
-            if (virtualMachines == null || !virtualMachines.Any())
-            {
-                log.Info("No virtual machines are found in the resource group: " + inputObject.ResourceGroup);
-                return null;
-            }
+            //Question - Can we try to Get Virtual Machinne By id so that we dont end up making a call w.r.t Rg and then have Filter on top of it ?
+            return azure.VirtualMachines.GetByResourceGroup(inputObject.ResourceGroup, inputObject.ResourceName);
+            //var virtualMachines = await azure.VirtualMachines.ListByResourceGroupAsync(inputObject.ResourceGroup);
+            //if (virtualMachines == null || !virtualMachines.Any())
+            //{
+            //    log.Info("No virtual machines are found in the resource group: " + inputObject.ResourceGroup);
+            //    return null;
+            //}
 
-            return virtualMachines.FirstOrDefault(x => x.Name.Equals(inputObject.ResourceName, StringComparison.InvariantCultureIgnoreCase));
+            //return virtualMachines.FirstOrDefault(x => x.Name.Equals(inputObject.ResourceName, StringComparison.InvariantCultureIgnoreCase));
         }
     }
 }

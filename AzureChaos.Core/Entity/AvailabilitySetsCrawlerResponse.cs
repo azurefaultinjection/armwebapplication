@@ -2,6 +2,7 @@
 
 namespace AzureChaos.Core.Entity
 {
+    //Todo Declare the default values if possible
     public class AvailabilitySetsCrawlerResponse : CrawlerResponse
     {
         public AvailabilitySetsCrawlerResponse()
@@ -14,7 +15,7 @@ namespace AzureChaos.Core.Entity
         }
 
         [Required] public string Key { get; set; }
-        
+
         public bool HasVirtualMachines { get; set; }
 
         [Required] public int FaultDomainCount { get; set; }

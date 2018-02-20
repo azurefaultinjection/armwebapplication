@@ -15,7 +15,5 @@ namespace AzureChaos.Core.Entity
         }
 
         [Required] public string ProvisionalState { get; set; }
-
-        [Required] public string ResourceGroupId { get; set; }
     }
 }

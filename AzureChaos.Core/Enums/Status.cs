@@ -8,6 +8,7 @@
         Completed,
         Failed,
         Stopped,
-        Running
+        Running,
+        Executing
     }
 }

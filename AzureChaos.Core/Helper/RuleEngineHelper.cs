@@ -39,11 +39,11 @@ namespace AzureChaos.Core.Helper
             string combinationKey;
             if (domainFlage)
             {
-                combinationKey = entity.AvailableSetId + "!" + entity.FaultDomain?.ToString();
+                combinationKey = entity.AvailabilitySetId + Delimeters.Exclamatory + entity.FaultDomain?.ToString();
             }
             else
             {
-                combinationKey = entity.AvailableSetId + "@" + entity.UpdateDomain?.ToString();
+                combinationKey = entity.AvailabilitySetId + Delimeters.At + entity.UpdateDomain?.ToString();
             }
             return new ScheduledRules(VirtualMachineGroup.AvailabilitySets.ToString(), entity.RowKey)
             {
@@ -79,7 +79,7 @@ namespace AzureChaos.Core.Helper
                 Action = action,
                 ResourceName = crawlerResponse.ResourceName,
                 ResourceGroup = crawlerResponse.ResourceGroupName,
-                ScalesetId = crawlerResponse.PartitionKey.Replace("!", "/")
+                VirtualMachineScaleSetId = crawlerResponse.PartitionKey.Replace(Delimeters.Exclamatory, Delimeters.ForwardSlash)
             };
             return JsonConvert.SerializeObject(triggerdata);
         }

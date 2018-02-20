@@ -1,4 +1,5 @@
 ﻿using AzureChaos.Core.Entity;
+using AzureChaos.Core.Constants;
 using AzureChaos.Core.Enums;
 using Microsoft.Azure.Management.Compute.Fluent;
 using Microsoft.WindowsAzure.Storage.Table;
@@ -17,17 +18,16 @@ namespace AzureChaos.Core.Helper
         /// <returns></returns>
         public static VirtualMachineCrawlerResponse ConvertToVirtualMachineEntity(IVirtualMachine virtualMachine, string partitionKey, string vmGroup = "")
         {
-            var virtualMachineCrawlerResponseEntity = new VirtualMachineCrawlerResponse(partitionKey, virtualMachine.Id.Replace("/", "!"))
+            var virtualMachineCrawlerResponseEntity = new VirtualMachineCrawlerResponse(partitionKey,
+                                                       virtualMachine.Id.Replace(Delimeters.ForwardSlash, Delimeters.Exclamatory))
             {
-                EntryInsertionTime = DateTime.UtcNow,
                 RegionName = virtualMachine.RegionName,
                 ResourceGroupName = virtualMachine.ResourceGroupName,
                 ResourceName = virtualMachine.Name,
-                AvailableSetId = virtualMachine.AvailabilitySetId,
+                AvailabilitySetId = virtualMachine.AvailabilitySetId,
                 UpdateDomain = virtualMachine.InstanceView?.PlatformUpdateDomain,
-                FaultDomain =  virtualMachine.InstanceView?.PlatformFaultDomain,
+                FaultDomain = virtualMachine.InstanceView?.PlatformFaultDomain,
                 ResourceType = virtualMachine.Type,
-                Id = virtualMachine.Id,
                 AvailabilityZone = virtualMachine.AvailabilityZones.Count > 0 ?
                     int.Parse(virtualMachine.AvailabilityZones.FirstOrDefault().Value) : 0,
                 VirtualMachineGroup = string.IsNullOrWhiteSpace(vmGroup) ? VirtualMachineGroup.VirtualMachines.ToString() : vmGroup,
@@ -38,28 +38,27 @@ namespace AzureChaos.Core.Helper
         }
 
         /// <summary>Convert the Virtual machine to virtual machine crawler response entity.</summary>
-        /// <param name="scaleSetVm">The virtual machine.</param>
+        /// <param name="scaleSetVirtualMachines">The virtual machine.</param>
         /// <param name="resourceGroup">The resource group name.</param>
-        /// <param name="scaleSetId">Scale set name of the vm.</param>
+        /// <param name="virtualMachineScaleSetId">Scale set name of the vm.</param>
         /// <param name="partitionKey">The partition key for the virtaul machine entity.</param>
         /// <param name="availabilityZone">The availability zone value for the virtual machine scale set vm instance</param>
         /// <param name="vmGroup">Virtual machine group name.</param>
         /// <returns></returns>
-        public static VirtualMachineCrawlerResponse ConvertToVirtualMachineEntity(IVirtualMachineScaleSetVM scaleSetVm, string resourceGroup, string scaleSetId, 
-            string partitionKey, int? availabilityZone, string vmGroup = "")
+        public static VirtualMachineCrawlerResponse ConvertToVirtualMachineEntity(IVirtualMachineScaleSetVM scaleSetVirtualMachines, string resourceGroup,
+                                                                                 string virtualMachineScaleSetId, string partitionKey, int? availabilityZone,
+                                                                                  string vmGroup = "")
         {
-            var virtualMachineCrawlerResponseEntity = new VirtualMachineCrawlerResponse(partitionKey, scaleSetVm.Id.Replace("/", "!"))
+            var virtualMachineCrawlerResponseEntity = new VirtualMachineCrawlerResponse(partitionKey, scaleSetVirtualMachines.Id.Replace(Delimeters.ForwardSlash, Delimeters.Exclamatory))
             {
-                EntryInsertionTime = DateTime.UtcNow,
-                RegionName = scaleSetVm.RegionName,
+                RegionName = scaleSetVirtualMachines.RegionName,
                 ResourceGroupName = resourceGroup,
-                ResourceName = scaleSetVm.Name,
-                ResourceType = scaleSetVm.Type,
-                ScaleSetId = scaleSetId,
-                Id = scaleSetVm.Id,
+                ResourceName = scaleSetVirtualMachines.Name,
+                ResourceType = scaleSetVirtualMachines.Type,
+                VirtualMachineScaleSetId = virtualMachineScaleSetId,
                 AvailabilityZone = availabilityZone != 0 ? availabilityZone : null,
                 VirtualMachineGroup = string.IsNullOrWhiteSpace(vmGroup) ? VirtualMachineGroup.VirtualMachines.ToString() : vmGroup,
-                State = scaleSetVm.PowerState.Value
+                State = scaleSetVirtualMachines.PowerState.Value
             };
 
             return virtualMachineCrawlerResponseEntity;
@@ -118,6 +117,7 @@ namespace AzureChaos.Core.Helper
 
             return tableBatchOperation;
         }
+
         public static TableBatchOperation CreateScheduleEntityForAvailabilitySet(IList<VirtualMachineCrawlerResponse> filteredVmSet, int schedulerFrequency, bool domainFlage)
         {
             var tableBatchOperation = new TableBatchOperation();
@@ -137,6 +137,7 @@ namespace AzureChaos.Core.Helper
 
             return tableBatchOperation;
         }
+
         /// <summary>Get the action based on the current state of the virtual machine.</summary>
         /// <param name="state">Current state of the virtual machine.</param>
         /// <returns></returns>

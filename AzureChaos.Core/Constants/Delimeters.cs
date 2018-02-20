@@ -7,5 +7,6 @@
     {
         public static char Exclamatory = '!';
         public static char ForwardSlash = '/';
+        public static char At = '@';
     }
 }

@@ -15,21 +15,6 @@ namespace AzureChaos.Core.Models
         public string ResourceGroup { get; set; }
 
         /// <summary>Get or sets  the resource group.</summary>
-        public string ScalesetId { get; set; }
-
-        /// <summary>AvailibilitySet Name to be passed</summary>
-        public string AvailibilitySet { get; set; }
-
-        /// <summary>Fault Domain Number in AvailibilitySet  to be passed</summary>
-        public bool FaultDomain { get; set; }
-
-        /// <summary>Update Domain Number in AvailibilitySet  to be passed</summary>
-        public bool UpdateDomain { get; set; }
-
-        /// <summary>Percntage of VMs to be under Action</summary>
-        public int VmPercentage { get; set; }
-
-        /// <summary>Resource Type for which Rule Engine is Triggered</summary>
-        public string ResourceType { get; set; }
+        public string VirtualMachineScaleSetId { get; set; }
     }
 }

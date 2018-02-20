@@ -1,5 +1,4 @@
-﻿using AzureChaos.Core.Models.Configs;
-using Microsoft.Azure.Management.Fluent;
+﻿using AzureChaos.Core.Models;
 using Microsoft.Azure.Management.ResourceManager.Fluent;
 using System;
 using System.Collections.Generic;
@@ -9,8 +8,10 @@ namespace AzureChaos.Core.Helper
 {
     public class ResourceGroupHelper
     {
-        public static List<IResourceGroup> GetResourceGroupsInSubscription(IAzure azure, AzureSettings azureSettings)
+        public static List<IResourceGroup> GetResourceGroupsInSubscription()
         {
+            var azure = AzureClient.AzureInstance;
+            var azureSettings = AzureClient.AzureSettings;
             var blackListedResourceGroupList = azureSettings.Chaos.BlackListedResourceGroupList;
             var inclusiveOnlyResourceGroupList = azureSettings.Chaos.InclusiveOnlyResourceGroupList;
             var resourceGroupList = azure.ResourceGroups.List();
