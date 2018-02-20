@@ -56,7 +56,7 @@ namespace ChaosExecuter.Executer
                     return false;
                 }
 
-                SetInitialEventActivity(virtualMachine, inputObject, eventActivity); // Why are we calling this are we noting it some where ?
+                SetInitialEventActivity(virtualMachine, inputObject, eventActivity);
 
                 // if its not valid chaos then update the event table with  warning message and return false
                 bool isValidChaos = IsValidChaos(inputObject.Action, virtualMachine.PowerState);
