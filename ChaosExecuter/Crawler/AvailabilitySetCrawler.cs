@@ -37,7 +37,7 @@ namespace ChaosExecuter.Crawler
             }
 
             await InsertAvailabilitySets(resourceGroupList, log);
-            log.Info("timercrawlerforavailabilitysets function processed a request. time elapsed : " + sw.ElapsedMilliseconds);
+            log.Info($"timercrawlerforavailabilitysets function processed a request. time elapsed : {sw.ElapsedMilliseconds}");
         }
 
         /// <summary>1. Iterate the resource groups to get the availability sets for individual resource group.

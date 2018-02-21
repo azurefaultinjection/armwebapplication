@@ -22,7 +22,7 @@ namespace ChaosExecuter.Crawler
     public static class AvailabilitySetsTimerCrawler
     {
         // TODO: need to read the crawler timer from the configuration.
-         [FunctionName("timercrawlerforavailabilitysets")]
+        [FunctionName("timercrawlerforavailabilitysets")]
         public static async Task Run([TimerTrigger("0 */15 * * * *")]TimerInfo myTimer, TraceWriter log)
         {
             //log.Info($"timercrawlerforavailabilitysets executed at: {DateTime.UtcNow}"); -- not required as it is already available in logs meta data
@@ -35,7 +35,7 @@ namespace ChaosExecuter.Crawler
             }
 
             await InsertAvailabilitySets(resourceGroupList, log);
-            log.Info("timercrawlerforavailabilitysets function processed a request. time elapsed : " + sw.ElapsedMilliseconds);
+            log.Info($"timercrawlerforavailabilitysets function processed a request. time elapsed : {sw.ElapsedMilliseconds}");
         }
 
         /// <summary>1. Iterate the resource groups to get the availability sets for individual resource group.

@@ -57,7 +57,7 @@ namespace ChaosExecuter.Trigger
                 }
 
                 var functionName = Mappings.FunctionNameMap[partitionKey];
-                log.Info($"Timely trigger: invoking function: " + functionName);
+                log.Info($"Timely trigger: invoking function: {functionName}");
                 tasks.Add(starter.StartNewAsync(functionName, result.TriggerData));
             }
 

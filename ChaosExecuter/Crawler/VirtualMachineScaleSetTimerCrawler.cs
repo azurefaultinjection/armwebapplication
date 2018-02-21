@@ -135,7 +135,7 @@ namespace ChaosExecuter.Crawler
                 {
                     //  catch the error, to continue adding other entities to table
                     log.Error($"timercrawlerforvirtualmachinescaleset threw the exception ", e,
-                        "GetVirtualMachineAndScaleSetBatch for the scale set: " + eachVirtualMachineScaleSet.Name);
+                        $"GetVirtualMachineAndScaleSetBatch for the scale set: {eachVirtualMachineScaleSet.Name}");
                 }
             });
 

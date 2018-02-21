@@ -21,7 +21,7 @@ namespace ChaosExecuter.Crawler
     public static class VirtualMachineTimerCrawler
     {
         // TODO: need to read the crawler timer from the configuration.
-         [FunctionName("timercrawlerforvirtualmachines")]
+        [FunctionName("timercrawlerforvirtualmachines")]
         public static async Task Run([TimerTrigger("0 */15 * * * *")]TimerInfo myTimer, TraceWriter log)
         {
             log.Info($"timercrawlerforvirtualmachines executed at: {DateTime.UtcNow}");
@@ -60,7 +60,7 @@ namespace ChaosExecuter.Crawler
                 // using parallel here to run all the resource groups parallelly, parallel is 10times faster than normal foreach.
                 Parallel.ForEach(resourceGroups, async eachResourceGroup =>
                 {
-                    log.Info($"timercrawlerforvirtualmachines: crawling virtual machines for  rg:" + eachResourceGroup.Name);
+                    log.Info($"timercrawlerforvirtualmachines: crawling virtual machines for  rg: {eachResourceGroup.Name}");
                     var virtualMachinesByResourceGroup = await GetVirtualMachinesByResourceGroup(eachResourceGroup, log);
                     if (virtualMachinesByResourceGroup == null) return;
                     var virtualMachineList = virtualMachinesByResourceGroup.ToList();
@@ -105,8 +105,7 @@ namespace ChaosExecuter.Crawler
             await Task.WhenAll(tasks);
             if (pagedCollection.Result == null || !pagedCollection.Result.Any())
             {
-                log.Info($"timercrawlerforvirtualmachines: no virtual machines for the resource group: " +
-                         resourceGroup.Name);
+                log.Info($"timercrawlerforvirtualmachines: no virtual machines for the resource group: {resourceGroup.Name}");
                 return null;
             }
 
