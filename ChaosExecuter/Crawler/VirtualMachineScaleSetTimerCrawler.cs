@@ -48,10 +48,8 @@ namespace ChaosExecuter.Crawler
         {
             try
             {
-                var virtualMachineCloudTable = StorageAccountProvider.CreateOrGetTableAsync(StorageTableNames.VirtualMachineCrawlerTableName);
-                var virtualMachineScaleSetTable = StorageAccountProvider.CreateOrGetTableAsync(StorageTableNames.VirtualMachinesScaleSetCrawlerTableName);
-
-                await Task.WhenAll(virtualMachineCloudTable, virtualMachineScaleSetTable);
+                var virtualMachineCloudTable = StorageAccountProvider.CreateOrGetTable(StorageTableNames.VirtualMachineCrawlerTableName);
+                var virtualMachineScaleSetTable = StorageAccountProvider.CreateOrGetTable(StorageTableNames.VirtualMachinesScaleSetCrawlerTableName);
 
                 var batchTasks = new ConcurrentBag<Task>();
                 // using parallel here to run all the resource groups parallelly, parallel is 10times faster than normal foreach.
@@ -62,8 +60,8 @@ namespace ChaosExecuter.Crawler
                         var virtualMachineScaleSetsList = AzureClient.AzureInstance.VirtualMachineScaleSets
                             .ListByResourceGroup(eachResourceGroup.Name);
                         GetVirtualMachineAndScaleSetBatch(virtualMachineScaleSetsList.ToList(), batchTasks,
-                            virtualMachineCloudTable.Result,
-                            virtualMachineScaleSetTable.Result, log);
+                            virtualMachineCloudTable,
+                            virtualMachineScaleSetTable, log);
                     }
                     catch (Exception e)
                     {

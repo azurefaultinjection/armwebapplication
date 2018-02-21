@@ -48,22 +48,15 @@ namespace ChaosExecuter.Crawler
         {
             try
             {
-                //Todo Remove the Async
-                // create the virtual machine table and availability set table asynchronously and wait untill they are returned
-                var virtualmachineCloudTable = StorageAccountProvider.CreateOrGetTableAsync(StorageTableNames.VirtualMachineCrawlerTableName);
-                var availabilitySetCloudTable = StorageAccountProvider.CreateOrGetTableAsync(StorageTableNames.AvailabilitySetCrawlerTableName);
-                await Task.WhenAny(availabilitySetCloudTable);
-
                 // using concurrent bag to get the results from the parallel execution
                 var virtualMachineConcurrentBag = new ConcurrentBag<IEnumerable<IGrouping<string, IVirtualMachine>>>();
                 var batchTasks = new ConcurrentBag<Task>();
 
                 // get the availability set batch operation and vm list by availability sets
-                SetTheVirtualMachinesAndAvailabilitySetBatchTask(resourceGroupList, virtualMachineConcurrentBag, batchTasks, availabilitySetCloudTable.Result, log);
+                SetTheVirtualMachinesAndAvailabilitySetBatchTask(resourceGroupList, virtualMachineConcurrentBag, batchTasks, log);
 
                 // get the virtual machine table batch operation parallely
-                await Task.WhenAny(virtualmachineCloudTable);
-                IncludeVirtualMachineTask(virtualMachineConcurrentBag, batchTasks, virtualmachineCloudTable.Result, log);
+                IncludeVirtualMachineTask(virtualMachineConcurrentBag, batchTasks, log);
 
                 // execute all batch operation as parallel
                 await Task.WhenAll(batchTasks);
@@ -79,12 +72,12 @@ namespace ChaosExecuter.Crawler
         /// <summary>Include the virtual machine batch operation into existing batch opeation</summary>
         /// <param name="virtualMachineConcurrentBag"></param>
         /// <param name="batchTasks"></param>
-        /// <param name="virtualMachineCloudTable"></param>
         /// <param name="log"></param>
         private static void IncludeVirtualMachineTask(ConcurrentBag<IEnumerable<IGrouping<string, IVirtualMachine>>> virtualMachineConcurrentBag,
-                                                      ConcurrentBag<Task> batchTasks, CloudTable virtualMachineCloudTable, TraceWriter log)
+                                                      ConcurrentBag<Task> batchTasks, TraceWriter log)
         {
             var groupsByVirtulaMachine = virtualMachineConcurrentBag.SelectMany(x => x);
+            var virtualmachineCloudTable = StorageAccountProvider.CreateOrGetTable(StorageTableNames.VirtualMachineCrawlerTableName);
             Parallel.ForEach(groupsByVirtulaMachine, groupItem =>
             {
                 // table batch operation currently allows only 100 per batch, So ensuring the one batch operation will have only 100 items
@@ -93,9 +86,9 @@ namespace ChaosExecuter.Crawler
                     var batchItems = groupItem.Skip(i)
                         .Take(TableConstants.TableServiceBatchMaximumOperations).ToList();
                     var virtualMachineBatchOperation = GetVirtualMachineBatchOperation(batchItems, groupItem.Key, log);
-                    if (virtualMachineBatchOperation != null && virtualMachineBatchOperation.Count > 0 && virtualMachineCloudTable != null)
+                    if (virtualMachineBatchOperation != null && virtualMachineBatchOperation.Count > 0 && virtualmachineCloudTable != null)
                     {
-                        batchTasks.Add(virtualMachineCloudTable.ExecuteBatchAsync(virtualMachineBatchOperation));
+                        batchTasks.Add(virtualmachineCloudTable.ExecuteBatchAsync(virtualMachineBatchOperation));
                     }
                 }
             });
@@ -107,14 +100,13 @@ namespace ChaosExecuter.Crawler
         /// <param name="resourceGroupList"></param>
         /// <param name="virtualMachinesConcurrent"></param>
         /// <param name="batchTasks"></param>
-        /// <param name="availabilitySetCloudTable"></param>
         /// <param name="log"></param>
         private static void SetTheVirtualMachinesAndAvailabilitySetBatchTask(IEnumerable<IResourceGroup> resourceGroupList,
             ConcurrentBag<IEnumerable<IGrouping<string, IVirtualMachine>>> virtualMachinesConcurrent,
             ConcurrentBag<Task> batchTasks,
-            CloudTable availabilitySetCloudTable,
             TraceWriter log)
         {
+            var availabilitySetCloudTable = StorageAccountProvider.CreateOrGetTable(StorageTableNames.AvailabilitySetCrawlerTableName);
             Parallel.ForEach(resourceGroupList, eachResourceGroup =>
             {
                 try

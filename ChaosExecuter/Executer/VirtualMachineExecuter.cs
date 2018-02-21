@@ -1,6 +1,3 @@
-using System;
-using System.Linq;
-using System.Threading.Tasks;
 using AzureChaos.Core.Entity;
 using AzureChaos.Core.Enums;
 using AzureChaos.Core.Models;
@@ -10,6 +7,7 @@ using Microsoft.Azure.Management.Fluent;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Host;
 using Newtonsoft.Json;
+using System;
 
 namespace ChaosExecuter.Executer
 {
@@ -26,7 +24,7 @@ namespace ChaosExecuter.Executer
         /// <param name="log">The trace writer.</param>
         /// <returns>Returns the http response message.</returns>
         [FunctionName("virtualmachinesexecuter")]
-        public static async Task<bool> Run([OrchestrationTrigger] DurableOrchestrationContext context, TraceWriter log)
+        public static bool Run([OrchestrationTrigger] DurableOrchestrationContext context, TraceWriter log)
         {
             var inputData = context.GetInput<string>();
             if (!ValidateInput(inputData, log, out var inputObject))

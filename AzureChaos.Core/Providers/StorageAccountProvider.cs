@@ -15,7 +15,7 @@ namespace AzureChaos.Core.Providers
     {
         /// <summary>Default format for the storage connection string.</summary>
         private const string ConnectionStringFormat = "DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1};EndpointSuffix=core.windows.net";
-        private static CloudStorageAccount storageAccount = null;
+        private static readonly CloudStorageAccount storageAccount;
 
         static StorageAccountProvider()
         {
@@ -27,26 +27,13 @@ namespace AzureChaos.Core.Providers
 
         public static CloudTable CreateOrGetTable(string tableName)
         {
-            var tableClient = storageAccount.CreateCloudTableClient() ?? throw new ArgumentNullException("storageAccount.CreateCloudTableClient()");
+            var tableClient = storageAccount.CreateCloudTableClient() ?? throw new ArgumentNullException($"storageAccount.CreateCloudTableClient()");
 
             // Retrieve a reference to the table.
             var table = tableClient.GetTableReference(tableName);
 
             // Create the table if it doesn't exist.
             table.CreateIfNotExists();
-
-            return table;
-        }
-
-        public static async Task<CloudTable> CreateOrGetTableAsync(string tableName)
-        {
-            var tableClient = storageAccount.CreateCloudTableClient() ?? throw new ArgumentNullException("storageAccount.CreateCloudTableClient()");
-
-            // Retrieve a reference to the table.
-            var table = tableClient.GetTableReference(tableName);
-
-            // Create the table if it doesn't exist.
-            await table.CreateIfNotExistsAsync();
 
             return table;
         }
