@@ -10,6 +10,7 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.WindowsAzure.Storage.Table;
+using Microsoft.WindowsAzure.Storage.Table.Protocol;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -31,6 +32,7 @@ namespace ChaosExecuter.Crawler
                 log.Info($"timercrawlerforvirtualmachinescaleset: no resource groups to crawl");
                 return;
             }
+
 
             await GetScaleSetsForResourceGroupsAsync(resourceGroupList, log);
         }
@@ -58,30 +60,22 @@ namespace ChaosExecuter.Crawler
                     try
                     {
                         var virtualMachineScaleSetsList = AzureClient.AzureInstance.VirtualMachineScaleSets
-                                                          .ListByResourceGroup(eachResourceGroup.Name);
-                        GetVirtualMachineAndScaleSetBatch(virtualMachineScaleSetsList, batchTasks,
-                                                          virtualMachineCloudTable.Result,
-                                                          virtualMachineScaleSetTable.Result, log);
+                            .ListByResourceGroup(eachResourceGroup.Name);
+                        GetVirtualMachineAndScaleSetBatch(virtualMachineScaleSetsList.ToList(), batchTasks,
+                            virtualMachineCloudTable.Result,
+                            virtualMachineScaleSetTable.Result, log);
                     }
                     catch (Exception e)
                     {
                         //  catch the error, to continue adding other entities to table
-                        log.Error($"timercrawlerforvirtualmachinescaleset threw the exception ", e, "GetScaleSetsForResourceGroups: for the resource group " + eachResourceGroup.Name);
+                        log.Error($"timercrawlerforvirtualmachinescaleset threw the exception ", e,
+                            "GetScaleSetsForResourceGroups: for the resource group " + eachResourceGroup.Name);
                     }
+
                 });
 
                 // execute all batch operation as parallel
-                Parallel.ForEach(batchTasks, new ParallelOptions { MaxDegreeOfParallelism = 20 }, (eachTask) =>
-                {
-                    try
-                    {
-                        Task.WhenAll(eachTask);
-                    }
-                    catch (Exception e)
-                    {
-                        log.Error($"timercrawlerforavailableset threw the exception on executing the batch operation ", e);
-                    }
-                });
+                await Task.WhenAll(batchTasks);
             }
             catch (Exception ex)
             {
@@ -107,14 +101,13 @@ namespace ChaosExecuter.Crawler
                 return;
             }
 
-            var virtualMachineScleSetTableBatchOperation = new TableBatchOperation();
+            var listOfScaleSetEntities = new ConcurrentBag<VirtualMachineScaleSetCrawlerResponse>();
             // get the batch operation for all the scale sets and corresponding virtual machine instances
             Parallel.ForEach(virtualMachineScaleSets, eachVirtualMachineScaleSet =>
             {
                 try
                 {
-                    virtualMachineScleSetTableBatchOperation.InsertOrReplace(ConvertToVirtualMachineScaleSetCrawlerResponse(eachVirtualMachineScaleSet));
-
+                    listOfScaleSetEntities.Add(ConvertToVirtualMachineScaleSetCrawlerResponse(eachVirtualMachineScaleSet));
                     var availabilityZone = eachVirtualMachineScaleSet.AvailabilityZones?.FirstOrDefault()?.Value;
                     int? zoneId = null;
                     if (!string.IsNullOrWhiteSpace(availabilityZone))
@@ -123,12 +116,20 @@ namespace ChaosExecuter.Crawler
                     }
 
                     // get the scale set instances
-                    var virtualMachinesBatchOperation = GetVirtualMachineBatchOperation(eachVirtualMachineScaleSet.VirtualMachines.List(),
-                                                                                        eachVirtualMachineScaleSet.ResourceGroupName,
-                                                                                        eachVirtualMachineScaleSet.Id, zoneId);
-                    if (virtualMachinesBatchOperation != null && virtualMachinesBatchOperation.Count > 0)
+                    var virtualMachineList = eachVirtualMachineScaleSet.VirtualMachines.List();
+                    // table batch operation currently allows only 100 per batch, So ensuring the one batch operation will have only 100 items
+                    var virtualMachineScaleSetVms = virtualMachineList.ToList();
+                    for (var i = 0; i < virtualMachineScaleSetVms.Count; i += TableConstants.TableServiceBatchMaximumOperations)
                     {
-                        batchTasks.Add(virtualMachineCloudTable.ExecuteBatchAsync(virtualMachinesBatchOperation));
+                        var batchItems = virtualMachineScaleSetVms.Skip(i)
+                            .Take(TableConstants.TableServiceBatchMaximumOperations).ToList();
+                        var virtualMachinesBatchOperation = GetVirtualMachineBatchOperation(batchItems,
+                            eachVirtualMachineScaleSet.ResourceGroupName,
+                            eachVirtualMachineScaleSet.Id, zoneId);
+                        if (virtualMachinesBatchOperation != null && virtualMachinesBatchOperation.Count > 0)
+                        {
+                            batchTasks.Add(virtualMachineCloudTable.ExecuteBatchAsync(virtualMachinesBatchOperation));
+                        }
                     }
                 }
                 catch (Exception e)
@@ -139,8 +140,17 @@ namespace ChaosExecuter.Crawler
                 }
             });
 
-            if (virtualMachineScleSetTableBatchOperation.Count > 0)
+            // table batch operation currently allows only 100 per batch, So ensuring the one batch operation will have only 100 items
+            for (var i = 0; i < listOfScaleSetEntities.Count; i += TableConstants.TableServiceBatchMaximumOperations)
             {
+                var batchItems = listOfScaleSetEntities.Skip(i)
+                    .Take(TableConstants.TableServiceBatchMaximumOperations).ToList();
+                var virtualMachineScleSetTableBatchOperation = new TableBatchOperation();
+                foreach (var entity in batchItems)
+                {
+                    virtualMachineScleSetTableBatchOperation.InsertOrReplace(entity);
+                }
+
                 batchTasks.Add(virtualMachineScaleSetCloudTable.ExecuteBatchAsync(virtualMachineScleSetTableBatchOperation));
             }
         }

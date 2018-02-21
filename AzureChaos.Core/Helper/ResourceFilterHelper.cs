@@ -64,12 +64,11 @@ namespace AzureChaos.Core.Helper
             var dateFilter = TableQuery.CombineFilters(TableQuery.GenerateFilterConditionForDate("EntryInsertionTime", QueryComparisons.LessThanOrEqual, DateTimeOffset.UtcNow),
                 TableOperators.And,
                 TableQuery.GenerateFilterConditionForDate("EntryInsertionTime", QueryComparisons.GreaterThanOrEqual, DateTimeOffset.UtcNow.AddHours(-azureSettings.Chaos.SchedulerFrequency)));
-            if (string.IsNullOrWhiteSpace(combinedFilter))
-            {
-                return dateFilter;
-            }
-
-            return TableQuery.CombineFilters(dateFilter, TableOperators.And, combinedFilter);
+            return !string.IsNullOrWhiteSpace(combinedFilter)
+                ? TableQuery.CombineFilters(dateFilter,
+                    TableOperators.And,
+                    combinedFilter)
+                : dateFilter;
         }
     }
 }

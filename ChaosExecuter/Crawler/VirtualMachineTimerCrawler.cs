@@ -1,12 +1,13 @@
+using AzureChaos.Core.Constants;
 using AzureChaos.Core.Helper;
 using AzureChaos.Core.Models;
-using AzureChaos.Core.Constants;
 using AzureChaos.Core.Providers;
 using Microsoft.Azure.Management.Compute.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.WindowsAzure.Storage.Table;
+using Microsoft.WindowsAzure.Storage.Table.Protocol;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -20,8 +21,8 @@ namespace ChaosExecuter.Crawler
     public static class VirtualMachineTimerCrawler
     {
         // TODO: need to read the crawler timer from the configuration.
-        // [FunctionName("timercrawlerforvirtualmachines")]
-        public static void Run([TimerTrigger("0 */15 * * * *")]TimerInfo myTimer, TraceWriter log)
+         [FunctionName("timercrawlerforvirtualmachines")]
+        public static async Task Run([TimerTrigger("0 */15 * * * *")]TimerInfo myTimer, TraceWriter log)
         {
             log.Info($"timercrawlerforvirtualmachines executed at: {DateTime.UtcNow}");
             try
@@ -33,7 +34,7 @@ namespace ChaosExecuter.Crawler
                     return;
                 }
 
-                GetVirtualMachinesByResourceGroups(resourceGroupList, log);
+                await GetVirtualMachinesByResourceGroups(resourceGroupList, log);
             }
             catch (Exception ex)
             {
@@ -48,7 +49,7 @@ namespace ChaosExecuter.Crawler
         /// 3. Execute all the task parallely</summary>
         /// <param name="resourceGroups">List of resource groups for the particular subscription.</param>
         /// <param name="log">Trace writer instance</param>
-        private static void GetVirtualMachinesByResourceGroups(IEnumerable<IResourceGroup> resourceGroups,
+        private static async Task GetVirtualMachinesByResourceGroups(IEnumerable<IResourceGroup> resourceGroups,
                                                                 TraceWriter log)
         {
             try
@@ -62,13 +63,23 @@ namespace ChaosExecuter.Crawler
                     log.Info($"timercrawlerforvirtualmachines: crawling virtual machines for  rg:" + eachResourceGroup.Name);
                     var virtualMachinesByResourceGroup = await GetVirtualMachinesByResourceGroup(eachResourceGroup, log);
                     if (virtualMachinesByResourceGroup == null) return;
-                    var batchOperation = InsertOrReplaceEntitiesIntoTable(virtualMachinesByResourceGroup.ToList(),
-                                                                          eachResourceGroup.Name, log);
-                    if (batchOperation != null)
+                    var virtualMachineList = virtualMachinesByResourceGroup.ToList();
+
+                    // table batch operation currently allows only 100 per batch, So ensuring the one batch operation will have only 100 items
+                    for (var i = 0; i < virtualMachineList.Count(); i += TableConstants.TableServiceBatchMaximumOperations)
                     {
-                        batchTasks.Add(virtualMachineCloudTable.ExecuteBatchAsync(batchOperation));
+                        var batchItems = virtualMachineList.Skip(i)
+                            .Take(TableConstants.TableServiceBatchMaximumOperations).ToList();
+                        var batchOperation = InsertOrReplaceEntitiesIntoTable(batchItems,
+                            eachResourceGroup.Name, log);
+                        if (batchOperation != null)
+                        {
+                            batchTasks.Add(virtualMachineCloudTable.ExecuteBatchAsync(batchOperation));
+                        }
                     }
                 });
+
+                await Task.WhenAll(batchTasks);
             }
             catch (Exception e)
             {

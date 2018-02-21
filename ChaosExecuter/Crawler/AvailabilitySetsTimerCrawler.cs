@@ -9,6 +9,7 @@ using Microsoft.Azure.Management.ResourceManager.Fluent;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.WindowsAzure.Storage.Table;
+using Microsoft.WindowsAzure.Storage.Table.Protocol;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -21,7 +22,7 @@ namespace ChaosExecuter.Crawler
     public static class AvailabilitySetsTimerCrawler
     {
         // TODO: need to read the crawler timer from the configuration.
-        [FunctionName("timercrawlerforavailabilitysets")]
+         [FunctionName("timercrawlerforavailabilitysets")]
         public static async Task Run([TimerTrigger("0 */15 * * * *")]TimerInfo myTimer, TraceWriter log)
         {
             //log.Info($"timercrawlerforavailabilitysets executed at: {DateTime.UtcNow}"); -- not required as it is already available in logs meta data
@@ -65,17 +66,8 @@ namespace ChaosExecuter.Crawler
                 IncludeVirtualMachineTask(virtualMachineConcurrentBag, batchTasks, virtualmachineCloudTable.Result, log);
 
                 // execute all batch operation as parallel
-                Parallel.ForEach(batchTasks, new ParallelOptions { MaxDegreeOfParallelism = 20 }, (task) =>
-                {
-                    try
-                    {
-                        Task.WhenAll(task);
-                    }
-                    catch (Exception ex)
-                    {
-                        log.Error($"timercrawlerforavailableset threw the exception on executing the batch operation ", ex);
-                    }
-                });
+                await Task.WhenAll(batchTasks);
+
             }
             catch (Exception ex)
             {
@@ -95,10 +87,16 @@ namespace ChaosExecuter.Crawler
             var groupsByVirtulaMachine = virtualMachineConcurrentBag.SelectMany(x => x);
             Parallel.ForEach(groupsByVirtulaMachine, groupItem =>
             {
-                var virtualMachineBatchOperation = GetVirtualMachineBatchOperation(groupItem, log);
-                if (virtualMachineBatchOperation != null && virtualMachineBatchOperation.Count > 0 && virtualMachineCloudTable != null)
+                // table batch operation currently allows only 100 per batch, So ensuring the one batch operation will have only 100 items
+                for (var i = 0; i < groupItem.Count(); i += TableConstants.TableServiceBatchMaximumOperations)
                 {
-                    batchTasks.Add(virtualMachineCloudTable.ExecuteBatchAsync(virtualMachineBatchOperation));
+                    var batchItems = groupItem.Skip(i)
+                        .Take(TableConstants.TableServiceBatchMaximumOperations).ToList();
+                    var virtualMachineBatchOperation = GetVirtualMachineBatchOperation(batchItems, groupItem.Key, log);
+                    if (virtualMachineBatchOperation != null && virtualMachineBatchOperation.Count > 0 && virtualMachineCloudTable != null)
+                    {
+                        batchTasks.Add(virtualMachineCloudTable.ExecuteBatchAsync(virtualMachineBatchOperation));
+                    }
                 }
             });
         }
@@ -122,15 +120,23 @@ namespace ChaosExecuter.Crawler
                 try
                 {
                     var availabilitySetIds = new List<string>();
-                    // get the availability sets by resource group
-                    // get the availability sets batch operation and get the list of availability set ids
-                    var availabilitySetbatchOperation =
-                        GetAvailabilitySetBatchOperation(eachResourceGroup.Name, availabilitySetIds);
-
-                    // add the batch operation into task list
-                    if (availabilitySetbatchOperation.Count > 0 && availabilitySetCloudTable != null)
+                    var availabilitySetsByResourceGroup = AzureClient.AzureInstance.AvailabilitySets.ListByResourceGroup(eachResourceGroup.Name);
+                    // table batch operation currently allows only 100 per batch, So ensuring the one batch operation will have only 100 items
+                    var setsByResourceGroup = availabilitySetsByResourceGroup.ToList();
+                    for (var i = 0; i < setsByResourceGroup.Count; i += TableConstants.TableServiceBatchMaximumOperations)
                     {
-                        batchTasks.Add(availabilitySetCloudTable.ExecuteBatchAsync(availabilitySetbatchOperation));
+                        var batchItems = setsByResourceGroup.Skip(i)
+                            .Take(TableConstants.TableServiceBatchMaximumOperations).ToList();
+                        // get the availability sets by resource group
+                        // get the availability sets batch operation and get the list of availability set ids
+                        var availabilitySetbatchOperation =
+                            GetAvailabilitySetBatchOperation(batchItems, availabilitySetIds);
+
+                        // add the batch operation into task list
+                        if (availabilitySetbatchOperation.Count > 0 && availabilitySetCloudTable != null)
+                        {
+                            batchTasks.Add(availabilitySetCloudTable.ExecuteBatchAsync(availabilitySetbatchOperation));
+                        }
                     }
 
                     // Get the virtual machines by resource group and by availability set ids
@@ -169,13 +175,12 @@ namespace ChaosExecuter.Crawler
         }
 
         /// <summary>Get the availability set batch operation</summary>
-        /// <param name="resourceGroupName">Resource group name to filter the availability set</param>
+        /// <param name="availabilitySetsByResourceGroup">Resource group name to filter the availability set</param>
         /// <param name="availabilitySetIdList">List of availability set,
         /// which will be using to filter the virtual machine list by availability set ids</param>
         /// <returns></returns>
-        private static TableBatchOperation GetAvailabilitySetBatchOperation(string resourceGroupName, List<string> availabilitySetIdList)
+        private static TableBatchOperation GetAvailabilitySetBatchOperation(IEnumerable<IAvailabilitySet> availabilitySetsByResourceGroup, List<string> availabilitySetIdList)
         {
-            var availabilitySetsByResourceGroup = AzureClient.AzureInstance.AvailabilitySets.ListByResourceGroup(resourceGroupName);
             var availabilitySetBatchOperation = new TableBatchOperation();
             foreach (var eachAvailabilitySet in availabilitySetsByResourceGroup)
             {
@@ -189,9 +194,11 @@ namespace ChaosExecuter.Crawler
 
         /// <summary>Get the virtual machine batch operation.</summary>
         /// <param name="virtualMachines">List of the virtual machines</param>
+        /// <param name="partitionKey"></param>
         /// <param name="log"></param>
         /// <returns></returns>
-        private static TableBatchOperation GetVirtualMachineBatchOperation(IGrouping<string, IVirtualMachine> virtualMachines, TraceWriter log)
+        private static TableBatchOperation GetVirtualMachineBatchOperation(IList<IVirtualMachine> virtualMachines,
+            string partitionKey, TraceWriter log)
         {
             if (virtualMachines == null)
             {
@@ -199,7 +206,7 @@ namespace ChaosExecuter.Crawler
             }
 
             var virtualMachineTableBatchOperation = new TableBatchOperation();
-            var partitionKey = virtualMachines.Key.Replace(Delimeters.ForwardSlash, Delimeters.Exclamatory);
+            partitionKey = partitionKey.Replace(Delimeters.ForwardSlash, Delimeters.Exclamatory);
             foreach (var eachVirtualMachine in virtualMachines)
             {
                 try

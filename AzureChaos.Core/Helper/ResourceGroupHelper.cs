@@ -12,21 +12,25 @@ namespace AzureChaos.Core.Helper
         {
             var azure = AzureClient.AzureInstance;
             var azureSettings = AzureClient.AzureSettings;
-            var blackListedResourceGroupList = azureSettings.Chaos.BlackListedResourceGroupList;
-            var inclusiveOnlyResourceGroupList = azureSettings.Chaos.InclusiveOnlyResourceGroupList;
+            List<string> blackListedResourceGroupList = azureSettings.Chaos.BlackListedResourceGroupList;
+            List<string> inclusiveOnlyResourceGroupList = azureSettings.Chaos.InclusiveOnlyResourceGroupList;
             var resourceGroupList = azure.ResourceGroups.List();
-            if (inclusiveOnlyResourceGroupList != null && inclusiveOnlyResourceGroupList.Count > 0)
+            var resourceGroups = resourceGroupList.ToList();
+            if (resourceGroups?.Count <= 0)
             {
-                return resourceGroupList.Where(x => inclusiveOnlyResourceGroupList.Contains(x.Name, StringComparer.OrdinalIgnoreCase)).ToList();
+                return null;
             }
-            else if (blackListedResourceGroupList != null && blackListedResourceGroupList.Count > 0)
+
+            if (inclusiveOnlyResourceGroupList?.Count > 0)
             {
-                return resourceGroupList.Where(x => !blackListedResourceGroupList.Contains(x.Name, StringComparer.OrdinalIgnoreCase)).ToList();
+                return resourceGroups.Where(x => inclusiveOnlyResourceGroupList.Contains(x.Name, StringComparer.OrdinalIgnoreCase)).ToList();
             }
-            else
-            {
-                return resourceGroupList.ToList();
-            }
+
+            return blackListedResourceGroupList?.Count > 0
+                ? resourceGroups.Where(x => !blackListedResourceGroupList.Contains(x.Name,
+                        StringComparer.OrdinalIgnoreCase))
+                    .ToList()
+                : resourceGroups.ToList();
         }
     }
 }

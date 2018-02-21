@@ -2,13 +2,13 @@
 using AzureChaos.Core.Entity;
 using AzureChaos.Core.Enums;
 using AzureChaos.Core.Models;
+using AzureChaos.Core.Models.Configs;
 using AzureChaos.Core.Providers;
 using Microsoft.WindowsAzure.Storage.Table;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using AzureChaos.Core.Models.Configs;
 
 namespace AzureChaos.Core.Helper
 {
