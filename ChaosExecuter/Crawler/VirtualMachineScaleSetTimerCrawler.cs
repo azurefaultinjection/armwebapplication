@@ -33,7 +33,6 @@ namespace ChaosExecuter.Crawler
                 return;
             }
 
-
             await GetScaleSetsForResourceGroupsAsync(resourceGroupList, log);
         }
 
@@ -188,7 +187,6 @@ namespace ChaosExecuter.Crawler
             var virtualMachineScaleSetEntity = new VirtualMachineScaleSetCrawlerResponse(virtualMachineScaleSet.ResourceGroupName, virtualMachineScaleSet.Id.Replace(Delimeters.ForwardSlash, Delimeters.Exclamatory))
             {
                 ResourceName = virtualMachineScaleSet.Name,
-                ResourceType = virtualMachineScaleSet.Type,
                 RegionName = virtualMachineScaleSet.RegionName,
                 Id = virtualMachineScaleSet.Id
             };

@@ -15,6 +15,7 @@ namespace AzureChaos.Core.Providers
     {
         /// <summary>Default format for the storage connection string.</summary>
         private const string ConnectionStringFormat = "DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1};EndpointSuffix=core.windows.net";
+
         private static readonly CloudStorageAccount storageAccount;
 
         static StorageAccountProvider()
@@ -69,10 +70,11 @@ namespace AzureChaos.Core.Providers
             {
                 var token = continuationToken;
                 var result = table.ExecuteQuerySegmented(query, token);
-                results = results != null ? results.Concat(result.Results) : result;
+                results = results?.Concat(result.Results) ?? result;
 
                 continuationToken = result.ContinuationToken;
-            } while (continuationToken != null);
+            }
+            while (continuationToken != null);
 
             return results;
         }
