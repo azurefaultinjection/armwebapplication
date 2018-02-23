@@ -32,7 +32,7 @@ namespace ChaosExecuter.Executer
             {
                 return false;
             }
-            
+
             var azureClient = new AzureClient();
             EventActivity eventActivity = new EventActivity(inputObject.ResourceName);
             try
@@ -204,16 +204,7 @@ namespace ChaosExecuter.Executer
         /// <returns>Returns the virtual machine.</returns>
         private static IVirtualMachine GetVirtualMachine(IAzure azure, InputObject inputObject)
         {
-            //Question - Can we try to Get Virtual Machinne By id so that we dont end up making a call w.r.t Rg and then have Filter on top of it ?
             return azure.VirtualMachines.GetByResourceGroup(inputObject.ResourceGroup, inputObject.ResourceName);
-            //var virtualMachines = await azure.VirtualMachines.ListByResourceGroupAsync(inputObject.ResourceGroup);
-            //if (virtualMachines == null || !virtualMachines.Any())
-            //{
-            //    log.Info("No virtual machines are found in the resource group: " + inputObject.ResourceGroup);
-            //    return null;
-            //}
-
-            //return virtualMachines.FirstOrDefault(x => x.Name.Equals(inputObject.ResourceName, StringComparison.InvariantCultureIgnoreCase));
         }
     }
 }

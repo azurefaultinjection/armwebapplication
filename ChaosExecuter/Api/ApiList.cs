@@ -64,13 +64,12 @@ namespace ChaosExecuter.Api
             dynamic data = bodyContentTask.Result;
             var fromDate = data?.fromDate;
             var toDate = data?.toDate;
-            DateTimeOffset fromDateTimeOffset;
-            if (!DateTimeOffset.TryParse(fromDate, out fromDateTimeOffset))
+            if (!DateTimeOffset.TryParse(fromDate, out DateTimeOffset fromDateTimeOffset))
             {
                 fromDateTimeOffset = DateTimeOffset.UtcNow.AddDays(-1);
             }
-            DateTimeOffset toDateTimeOffset;
-            if (!DateTimeOffset.TryParse(fromDate, out toDateTimeOffset))
+
+            if (!DateTimeOffset.TryParse(fromDate, out DateTimeOffset toDateTimeOffset))
             {
                 toDateTimeOffset = DateTimeOffset.UtcNow;
             }
@@ -90,13 +89,12 @@ namespace ChaosExecuter.Api
             dynamic data = await req.Content.ReadAsAsync<object>();
             var fromDate = data?.fromDate;
             var toDate = data?.toDate;
-            DateTimeOffset fromDateTimeOffset;
-            if (!DateTimeOffset.TryParse(fromDate, out fromDateTimeOffset))
+            if (!DateTimeOffset.TryParse(fromDate, out DateTimeOffset fromDateTimeOffset))
             {
                 fromDateTimeOffset = DateTimeOffset.UtcNow.AddDays(-1);
             }
-            DateTimeOffset toDateTimeOffset;
-            if (!DateTimeOffset.TryParse(fromDate, out toDateTimeOffset))
+
+            if (!DateTimeOffset.TryParse(fromDate, out DateTimeOffset toDateTimeOffset))
             {
                 toDateTimeOffset = DateTimeOffset.UtcNow;
             }

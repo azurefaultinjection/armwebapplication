@@ -107,7 +107,6 @@ namespace AzureChaos.Core.Helper
             return resultsSet.ToList();
         }
 
-
         public static List<T> QueryByPartitionKeyAndRowKey<T>(string partitionKey, string rowKey, string tableName) where T : ITableEntity, new()
         {
             var tableQuery = new TableQuery<T>();

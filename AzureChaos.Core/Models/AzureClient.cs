@@ -13,8 +13,8 @@ namespace AzureChaos.Core.Models
     /// and resource group needs to be crawled</summary>
     public class AzureClient
     {
-        public IAzure AzureInstance;
-        public AzureSettings AzureSettings;
+        public readonly IAzure AzureInstance;
+        public readonly AzureSettings AzureSettings;
 
         /// <summary>
         /// Initialize the configuration information and AzureInstance
@@ -30,7 +30,7 @@ namespace AzureChaos.Core.Models
                         AzureSettings.Client.TenantId, AzureSettings.Client.SubscriptionId);
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // TODO: Logs
             }
@@ -39,12 +39,7 @@ namespace AzureChaos.Core.Models
         public static IResourceManagementClient GetResourceManagementClientClient(string clientId, string clientSecret, string tenantId, string subscriptionId)
         {
             var azureCredentials = GetAzureCredentials(clientId, clientSecret, tenantId);
-            if (azureCredentials == null)
-            {
-                return null;
-            }
-
-            return new ResourceManagementClient(azureCredentials)
+            return azureCredentials == null ? null : new ResourceManagementClient(azureCredentials)
             {
                 SubscriptionId = subscriptionId
             };
@@ -53,12 +48,7 @@ namespace AzureChaos.Core.Models
         public static ISubscriptionClient GetSubscriptionClient(string clientId, string clientSecret, string tenantId)
         {
             var azureCredentials = GetAzureCredentials(clientId, clientSecret, tenantId);
-            if (azureCredentials == null)
-            {
-                return null;
-            }
-
-            return new SubscriptionClient(azureCredentials);
+            return azureCredentials == null ? null : new SubscriptionClient(azureCredentials);
         }
 
         /// <summary>Get the Azure object to read the all resources from azure</summary>
@@ -66,18 +56,11 @@ namespace AzureChaos.Core.Models
         private static IAzure GetAzure(string clientId, string clientSecret, string tenantId, string subscriptionId)
         {
             var azureCredentials = GetAzureCredentials(clientId, clientSecret, tenantId);
-            if (azureCredentials == null)
-            {
-                return null;
-            }
-
-            var azure = Azure
+            return azureCredentials == null ? null : Azure
                 .Configure()
                 .WithLogLevel(HttpLoggingDelegatingHandler.Level.Basic)
                 .Authenticate(azureCredentials)
                 .WithSubscription(subscriptionId);
-
-            return azure;
         }
 
         /// <summary>Get azure credentials based on the client id and client secret.</summary>
@@ -94,7 +77,7 @@ namespace AzureChaos.Core.Models
             // Microsft - string ConnectionString = "DefaultEndpointsProtocol=https;AccountName=azurechaos;AccountKey=4p2a4nzUp3AytDnTm4KY3ERrNfzayowqGWJEZcitqS7fy/QOE/R/a0uT3qjjHVoH6Tb2dG3dC/qpYO4iM0cKHA==;EndpointSuffix=core.windows.net";
             const string connectionString = "DefaultEndpointsProtocol=https;AccountName=azurechaos;AccountKey=b7yYCgyI9jg5fsRCr08tHzeic0CT5pelmpb2ZMcBaZKWhe8HdycOOs9r3luB2xygOwrbxFBnxLpysjzURKkQLQ==;EndpointSuffix=core.windows.net";
 
-            // TODO: Add to app settings of the function. 
+            // TODO: Add to app settings of the function.
             //  const string connectionString = "UseDevelopmentStorage=true";
 
             // TODO: Add below code to try catch & log
@@ -104,7 +87,7 @@ namespace AzureChaos.Core.Models
             var blobContainer = blobClinet.GetContainerReference("configs");
             var blobReference = blobContainer.GetBlockBlobReference("azuresettings.json");
             var data = blobReference.DownloadText();
-           return JsonConvert.DeserializeObject<AzureSettings>(data);
+            return JsonConvert.DeserializeObject<AzureSettings>(data);
         }
     }
 }

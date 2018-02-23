@@ -9,13 +9,12 @@ using Microsoft.WindowsAzure.Storage.Table;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using AzureChaos.Core.Constants;
 
 namespace AzureChaos.Core.Interfaces
 {
     public class AvailabilitySetRuleEngine : IRuleEngine
     {
-        private AzureClient azureClient = new AzureClient();
+        private readonly AzureClient _azureClient = new AzureClient();
 
         public void CreateRule(TraceWriter log)
         {
@@ -63,7 +62,7 @@ namespace AzureChaos.Core.Interfaces
                     QueryComparisons.Equal,
                     availabilitySetId),
                 TableOperators.And,
-                azureClient.AzureSettings.Chaos.AvailabilitySetChaos.FaultDomainEnabled
+                _azureClient.AzureSettings.Chaos.AvailabilitySetChaos.FaultDomainEnabled
                     ? TableQuery.GenerateFilterConditionForInt("FaultDomain",
                         QueryComparisons.Equal,
                         domainNumber)
@@ -80,8 +79,8 @@ namespace AzureChaos.Core.Interfaces
                 return;
             }
 
-            var domainFlag = !azureClient.AzureSettings.Chaos.AvailabilitySetChaos.UpdateDomainEnabled;
-            var scheduledRulesbatchOperation = VirtualMachineHelper.CreateScheduleEntityForAvailabilitySet(virtualMachinesResults, azureClient.AzureSettings.Chaos.SchedulerFrequency, domainFlag);
+            var domainFlag = !_azureClient.AzureSettings.Chaos.AvailabilitySetChaos.UpdateDomainEnabled;
+            var scheduledRulesbatchOperation = VirtualMachineHelper.CreateScheduleEntityForAvailabilitySet(virtualMachinesResults, _azureClient.AzureSettings.Chaos.SchedulerFrequency, domainFlag);
             if (scheduledRulesbatchOperation.Count <= 0)
             {
                 return;
@@ -97,7 +96,7 @@ namespace AzureChaos.Core.Interfaces
             var possibleAvailabilitySetDomainCombinationVmCount = new Dictionary<string, int>();
             var meanTimeQuery = TableQuery.GenerateFilterConditionForDate("scheduledExecutionTime",
                 QueryComparisons.GreaterThanOrEqual,
-                DateTimeOffset.UtcNow.AddMinutes(-azureClient.AzureSettings.Chaos.SchedulerFrequency));
+                DateTimeOffset.UtcNow.AddMinutes(-_azureClient.AzureSettings.Chaos.SchedulerFrequency));
 
             var recentlyExecutedAvailabilitySetDomainCombinationQuery = TableQuery.GenerateFilterCondition(
                 "PartitionKey",
@@ -115,7 +114,7 @@ namespace AzureChaos.Core.Interfaces
 
             foreach (var eachExecutedAvilabilitySetCombinationResults in executedAvilabilitySetCombinationResults)
             {
-                if (azureClient.AzureSettings.Chaos.AvailabilitySetChaos.FaultDomainEnabled)
+                if (_azureClient.AzureSettings.Chaos.AvailabilitySetChaos.FaultDomainEnabled)
                 {
                     if (!eachExecutedAvilabilitySetCombinationResults.CombinationKey.Contains("!")) continue;
 
@@ -180,7 +179,7 @@ namespace AzureChaos.Core.Interfaces
             foreach (var eachVirtualMachine in crawledVirtualMachineResults)
             {
                 string entryIntoPossibleAvailabilitySetDomainCombinationVmCount;
-                if (azureClient.AzureSettings.Chaos.AvailabilitySetChaos.FaultDomainEnabled)
+                if (_azureClient.AzureSettings.Chaos.AvailabilitySetChaos.FaultDomainEnabled)
                 {
                     entryIntoPossibleAvailabilitySetDomainCombinationVmCount = eachVirtualMachine.AvailabilitySetId + Delimeters.Exclamatory.ToString() + eachVirtualMachine.FaultDomain;
                 }

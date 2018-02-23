@@ -15,11 +15,12 @@ namespace AzureChaos.Core.Providers
         /// <summary>Default format for the storage connection string.</summary>
         private const string ConnectionStringFormat = "DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1};EndpointSuffix=core.windows.net";
 
-        private static readonly CloudStorageAccount storageAccount;
+        private static readonly CloudStorageAccount StorageAccount;
+
         static StorageAccountProvider()
         {
             var azureSettings = new AzureClient().AzureSettings;
-            storageAccount = CloudStorageAccount.Parse(
+            StorageAccount = CloudStorageAccount.Parse(
                                 string.Format(ConnectionStringFormat,
                                     azureSettings.Client.StorageAccountName,
                                               "b7yYCgyI9jg5fsRCr08tHzeic0CT5pelmpb2ZMcBaZKWhe8HdycOOs9r3luB2xygOwrbxFBnxLpysjzURKkQLQ=="));
@@ -27,7 +28,7 @@ namespace AzureChaos.Core.Providers
 
         public static CloudTable CreateOrGetTable(string tableName)
         {
-            var tableClient = storageAccount.CreateCloudTableClient() ?? throw new ArgumentNullException($"storageAccount.CreateCloudTableClient()");
+            var tableClient = StorageAccount.CreateCloudTableClient() ?? throw new ArgumentNullException($"storageAccount.CreateCloudTableClient()");
 
             // Retrieve a reference to the table.
             var table = tableClient.GetTableReference(tableName);

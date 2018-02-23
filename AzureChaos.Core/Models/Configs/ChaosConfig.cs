@@ -22,6 +22,9 @@ namespace AzureChaos.Core.Models.Configs
         [JsonProperty("microsoft.chaos.scheduler.frequency")]
         public int SchedulerFrequency { get; set; }
 
+        [JsonProperty("microsoft.chaos.rollback.fequency")]
+        public int RollbackRunFrequency { get; set; }
+
         [JsonProperty("microsoft.chaos.trigger.frequency")]
         public int TriggerFrequency { get; set; }
 

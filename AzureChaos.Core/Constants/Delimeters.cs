@@ -8,5 +8,6 @@
         public const char Exclamatory = '!';
         public const char ForwardSlash = '/';
         public const char At = '@';
+        public const char Underscore = '_';
     }
 }
