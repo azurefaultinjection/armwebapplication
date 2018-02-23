@@ -94,8 +94,9 @@ namespace ChaosExecuter.Crawler
         /// <returns>List of virtual machines which excludes the load balancer virtual machines and availability set virtual machines.</returns>
         private static async Task<IEnumerable<IVirtualMachine>> GetVirtualMachinesByResourceGroup(IResourceGroup resourceGroup, TraceWriter log)
         {
-            var loadBalancersVirtualMachines = GetVirtualMachinesFromLoadBalancers(resourceGroup.Name, log);
-            var pagedCollection = AzureClient.AzureInstance.VirtualMachines.ListByResourceGroupAsync(resourceGroup.Name);
+            var azureClient = new AzureClient();
+            var loadBalancersVirtualMachines = GetVirtualMachinesFromLoadBalancers(resourceGroup.Name, azureClient, log);
+            var pagedCollection = azureClient.AzureInstance.VirtualMachines.ListByResourceGroupAsync(resourceGroup.Name);
             var tasks = new List<Task>
             {
                 loadBalancersVirtualMachines,
@@ -148,13 +149,14 @@ namespace ChaosExecuter.Crawler
 
         /// <summary>Get the list of the load balancer virtual machines by resource group.</summary>
         /// <param name="resourceGroup">The resource group name.</param>
+        /// <param name="azureClient"></param>
         /// <param name="log">Trace writer instance</param>
         /// <returns>Returns the list of vm ids which are in the load balancers.</returns>
-        private static async Task<List<string>> GetVirtualMachinesFromLoadBalancers(string resourceGroup, TraceWriter log)
+        private static async Task<List<string>> GetVirtualMachinesFromLoadBalancers(string resourceGroup, AzureClient azureClient, TraceWriter log)
         {
             log.Info($"timercrawlerforvirtualmachines getting the load balancer virtual machines");
             var virtualMachinesIds = new List<string>();
-            var pagedCollection = await AzureClient.AzureInstance.LoadBalancers.ListByResourceGroupAsync(resourceGroup);
+            var pagedCollection = await azureClient.AzureInstance.LoadBalancers.ListByResourceGroupAsync(resourceGroup);
             if (pagedCollection == null)
             {
                 return virtualMachinesIds;

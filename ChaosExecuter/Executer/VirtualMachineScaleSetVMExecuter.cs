@@ -1,6 +1,4 @@
-using System;
-using System.Linq;
-using System.Threading.Tasks;
+using AzureChaos.Core.Constants;
 using AzureChaos.Core.Entity;
 using AzureChaos.Core.Enums;
 using AzureChaos.Core.Models;
@@ -10,6 +8,9 @@ using Microsoft.Azure.Management.Fluent;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Host;
 using Newtonsoft.Json;
+using System;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace ChaosExecuter.Executer
 {
@@ -25,12 +26,12 @@ namespace ChaosExecuter.Executer
             {
                 return false;
             }
-
-            var azureSettings = AzureClient.AzureSettings;
+            
+            var azureClient = new AzureClient();
             EventActivity eventActivity = new EventActivity(inputObject.ResourceGroup);
             try
             {
-                var scaleSetVm = await GetVirtualMachineScaleSetVm(AzureClient.AzureInstance, inputObject, log);
+                var scaleSetVm = await GetVirtualMachineScaleSetVm(azureClient.AzureInstance, inputObject, log);
                 if (scaleSetVm == null)
                 {
                     log.Info($"VM Scaleset Chaos : No resource found for the  scale set id: " + inputObject.VirtualMachineScaleSetId);
@@ -49,12 +50,12 @@ namespace ChaosExecuter.Executer
                     log.Info($"VM ScaleSet- Invalid action: " + inputObject.Action);
                     eventActivity.Status = Status.Failed.ToString();
                     eventActivity.Warning = "Invalid Action";
-                    StorageAccountProvider.InsertOrMerge(eventActivity, azureSettings.ActivityLogTable);
+                    StorageAccountProvider.InsertOrMerge(eventActivity, StorageTableNames.ActivityLogTableName);
                     return false;
                 }
 
                 eventActivity.Status = Status.Started.ToString();
-                StorageAccountProvider.InsertOrMerge(eventActivity, azureSettings.ActivityLogTable);
+                StorageAccountProvider.InsertOrMerge(eventActivity, StorageTableNames.ActivityLogTableName);
                 await PerformChaos(inputObject.Action, scaleSetVm, eventActivity);
                 scaleSetVm = await scaleSetVm.RefreshAsync();
                 if (scaleSetVm != null)
@@ -63,7 +64,7 @@ namespace ChaosExecuter.Executer
                     eventActivity.FinalState = scaleSetVm.PowerState.Value;
                 }
 
-                StorageAccountProvider.InsertOrMerge(eventActivity, azureSettings.ActivityLogTable);
+                StorageAccountProvider.InsertOrMerge(eventActivity, StorageTableNames.ActivityLogTableName);
                 log.Info($"VM ScaleSet Chaos Completed");
                 return true;
             }
@@ -71,7 +72,7 @@ namespace ChaosExecuter.Executer
             {
                 eventActivity.Error = ex.Message;
                 eventActivity.Status = Status.Failed.ToString();
-                StorageAccountProvider.InsertOrMerge(eventActivity, azureSettings.ActivityLogTable);
+                StorageAccountProvider.InsertOrMerge(eventActivity, StorageTableNames.ActivityLogTableName);
 
                 // dont throw the error here just handle the error and return the false
                 log.Error($"VM ScaleSet Chaos trigger function threw the exception ", ex, FunctionName);

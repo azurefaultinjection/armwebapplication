@@ -11,6 +11,14 @@ namespace AzureChaos.Core.Models.Configs
         [JsonProperty("microsoft.chaos.leashed")]
         public bool Leashed { get; set; }
 
+        [JsonProperty("microsoft.chaos.meantime")]
+        // Donot execute chaos on the resource in mean time more than the minimum time
+        public int MeanTime { get; set; }
+
+        [JsonProperty("microsoft.chaos.minimumtime")]
+        // Make sure to perform chaos not more than the minimum time on the mean time.
+        public int MinimumTime { get; set; }
+
         [JsonProperty("microsoft.chaos.scheduler.frequency")]
         public int SchedulerFrequency { get; set; }
 

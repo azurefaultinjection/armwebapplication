@@ -86,12 +86,12 @@ namespace AzureChaos.Core.Helper
 
         public static List<VirtualMachineGroup> GetEnabledChaosSet(AzureSettings azureSettings)
         {
-            var enabledChaos = Mappings.GetEnabledChaos(AzureClient.AzureSettings);
+            var enabledChaos = Mappings.GetEnabledChaos(azureSettings);
 
             var selectionQuery = TableQuery.GenerateFilterConditionForDate("scheduledExecutionTime", QueryComparisons.GreaterThanOrEqual,
                 DateTimeOffset.UtcNow.AddMinutes(-azureSettings.Chaos.SchedulerFrequency));
             var scheduledQuery = new TableQuery<ScheduledRules>().Where(selectionQuery);
-            var executedResults = StorageAccountProvider.GetEntities(scheduledQuery, azureSettings.ScheduledRulesTable);
+            var executedResults = StorageAccountProvider.GetEntities(scheduledQuery, StorageTableNames.ScheduledRulesTableName);
             if (executedResults == null)
             {
                 var chaos = enabledChaos.Where(x => x.Value);

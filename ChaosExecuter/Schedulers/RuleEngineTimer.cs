@@ -11,18 +11,18 @@ namespace ChaosExecuter.Schedulers
 {
     public static class RuleEngineTimer
     {
-        [FunctionName("RuleEngineTimer")]
+        // [FunctionName("RuleEngineTimer")]
         public static void Run([TimerTrigger("0 0 * * * *")]TimerInfo myTimer, TraceWriter log)
         {
             log.Info("C# RuleEngine: trigger function started processing the request.");
-            var azureSettings = AzureClient.AzureSettings;
-            if (azureSettings?.Chaos == null || !azureSettings.Chaos.ChaosEnabled)
+            var azureClient = new AzureClient();
+            if (azureClient.AzureSettings?.Chaos == null || !azureClient.AzureSettings.Chaos.ChaosEnabled)
             {
                 log.Info("C# RuleEngine: Chaos is not enabled.");
                 return;
             }
 
-            var enabledChaos = RuleEngineHelper.GetEnabledChaosSet(azureSettings);
+            var enabledChaos = RuleEngineHelper.GetEnabledChaosSet(azureClient.AzureSettings);
             if (enabledChaos == null || !enabledChaos.Any())
             {
                 log.Info("C# RuleEngine: Chaos is not enabled on any resources.");

@@ -1,8 +1,8 @@
-﻿using AzureChaos.Core.Entity;
+﻿using AzureChaos.Core.Constants;
+using AzureChaos.Core.Entity;
 using AzureChaos.Core.Enums;
 using AzureChaos.Core.Helper;
 using AzureChaos.Core.Models;
-using AzureChaos.Core.Models.Configs;
 using AzureChaos.Core.Providers;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.WindowsAzure.Storage.Table;
@@ -10,7 +10,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Fluent = Microsoft.Azure.Management.ResourceManager.Fluent.Core;
 
 namespace AzureChaos.Core.Interfaces
 {
@@ -18,7 +17,7 @@ namespace AzureChaos.Core.Interfaces
     /// <summary>Scale set rule engine will create the rules for the virtual machine based on the config settings and existing schedule/event tables.</summary>
     public class ScaleSetRuleEngine : IRuleEngine
     {
-        private static AzureSettings _azureSettings = AzureClient.AzureSettings;
+        private AzureClient azureClient = new AzureClient();
 
         /// <summary>Create the rule for the virtual machine scale vms </summary>
         /// <param name="log"></param>
@@ -41,15 +40,17 @@ namespace AzureChaos.Core.Interfaces
                     return;
                 }
 
-                var table = StorageAccountProvider.CreateOrGetTable(_azureSettings.ScheduledRulesTable);
-                var count = VmCount(filteredVmSet.Count, _azureSettings);
+                var table = StorageAccountProvider.CreateOrGetTable(StorageTableNames.ScheduledRulesTableName);
+                var count = VmCount(filteredVmSet.Count);
                 var tasks = new List<Task>();
 
                 do
                 {
                     var randomSets = filteredVmSet.Take(count).ToList();
                     filteredVmSet = filteredVmSet.Except(randomSets).ToList();
-                    var batchOperation = VirtualMachineHelper.CreateScheduleEntity(randomSets, _azureSettings.Chaos.SchedulerFrequency, VirtualMachineGroup.VirtualMachineScaleSets);
+                    var batchOperation = VirtualMachineHelper.CreateScheduleEntity(randomSets,
+                        azureClient.AzureSettings.Chaos.SchedulerFrequency,
+                        VirtualMachineGroup.VirtualMachineScaleSets);
 
                     var operation = batchOperation;
                     tasks.Add(table.ExecuteBatchAsync(operation));
@@ -66,11 +67,11 @@ namespace AzureChaos.Core.Interfaces
 
         /// <summary>Pick the random scale set.</summary>
         /// <returns></returns>
-        private static VirtualMachineScaleSetCrawlerResponse GetRandomScaleSet()
+        private VirtualMachineScaleSetCrawlerResponse GetRandomScaleSet()
         {
             var filter = TableQuery.GenerateFilterConditionForBool("HasVirtualMachines", QueryComparisons.Equal, true);
-            var resultsSet = ResourceFilterHelper.QueryByMeanTime<VirtualMachineScaleSetCrawlerResponse>(_azureSettings,
-               _azureSettings.ScaleSetCrawlerTableName, filter);
+            var resultsSet = ResourceFilterHelper.QueryCrawlerResponseByMeanTime<VirtualMachineScaleSetCrawlerResponse>(azureClient.AzureSettings,
+               StorageTableNames.VirtualMachinesScaleSetCrawlerTableName, filter);
 
             if (resultsSet == null || !resultsSet.Any())
             {
@@ -86,30 +87,30 @@ namespace AzureChaos.Core.Interfaces
         /// here precondion ==> get the virtual machines from the crawler which are not in the recent scheduled list and not in the recent activities.</summary>
         /// <param name="scaleSetId">scale set id to filter the virtual machines.</param>
         /// <returns></returns>
-        private static IList<VirtualMachineCrawlerResponse> GetVirtualMachineSet(string scaleSetId)
+        private IList<VirtualMachineCrawlerResponse> GetVirtualMachineSet(string scaleSetId)
         {
-            var partitionKey = scaleSetId.Replace('/', '!');
+            var partitionKey = scaleSetId.Replace(Delimeters.ForwardSlash, Delimeters.Exclamatory);
             var groupNameFilter = TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, partitionKey);
-            var resultsSet = ResourceFilterHelper.QueryByMeanTime<VirtualMachineCrawlerResponse>(_azureSettings,
-                _azureSettings.VirtualMachineCrawlerTableName, groupNameFilter);
+            var resultsSet = ResourceFilterHelper.QueryCrawlerResponseByMeanTime<VirtualMachineCrawlerResponse>(azureClient.AzureSettings,
+                StorageTableNames.VirtualMachineCrawlerTableName, groupNameFilter);
             if (resultsSet == null || !resultsSet.Any())
             {
                 return null;
             }
 
             // TODO combine the schedule and activity table
-            var scheduleEntities = ResourceFilterHelper.QueryByMeanTime<ScheduledRules>(
-                _azureSettings,
-                _azureSettings.ScheduledRulesTable);
+            var scheduleEntities = ResourceFilterHelper.QuerySchedulesByMeanTime<ScheduledRules>(
+                azureClient.AzureSettings,
+                StorageTableNames.ScheduledRulesTableName);
 
             var scheduleEntitiesResourceIds = scheduleEntities == null || !scheduleEntities.Any()
                 ? new List<string>()
-                : scheduleEntities.Select(x => x.RowKey.Replace("!",
-                    "/"));
+                : scheduleEntities.Select(x => x.RowKey.Replace(Delimeters.Exclamatory,
+                    Delimeters.ForwardSlash));
 
-            var activityEntities = ResourceFilterHelper.QueryByMeanTime<EventActivity>(
-                _azureSettings,
-                _azureSettings.ActivityLogTable);
+            var activityEntities = ResourceFilterHelper.QueryActivitiesByMeanTime(
+                azureClient.AzureSettings,
+                StorageTableNames.ActivityLogTableName);
 
             var activityEntitiesResourceIds = activityEntities == null || !activityEntities.Any()
                 ? new List<string>()
@@ -122,11 +123,10 @@ namespace AzureChaos.Core.Interfaces
 
         /// <summary>Get the virtual machine count based on the config percentage.</summary>
         /// <param name="totalCount">Total number of the virual machines.</param>
-        /// <param name="azureSettings">Azure configuration</param>
         /// <returns></returns>
-        private static int VmCount(int totalCount, AzureSettings azureSettings)
+        private int VmCount(int totalCount)
         {
-            var vmPercentage = azureSettings?.Chaos?.ScaleSetChaos?.PercentageTermination;
+            var vmPercentage = azureClient.AzureSettings?.Chaos?.ScaleSetChaos?.PercentageTermination;
 
             return vmPercentage == null ? totalCount : (int)(vmPercentage / 100 * totalCount);
         }

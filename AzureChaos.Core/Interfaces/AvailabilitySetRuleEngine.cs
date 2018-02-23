@@ -1,8 +1,8 @@
-﻿using AzureChaos.Core.Entity;
+﻿using AzureChaos.Core.Constants;
+using AzureChaos.Core.Entity;
 using AzureChaos.Core.Enums;
 using AzureChaos.Core.Helper;
 using AzureChaos.Core.Models;
-using AzureChaos.Core.Models.Configs;
 using AzureChaos.Core.Providers;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.WindowsAzure.Storage.Table;
@@ -14,7 +14,7 @@ namespace AzureChaos.Core.Interfaces
 {
     public class AvailabilitySetRuleEngine : IRuleEngine
     {
-        private readonly AzureSettings _azureSettings = AzureClient.AzureSettings;
+        private AzureClient azureClient = new AzureClient();
 
         public void CreateRule(TraceWriter log)
         {
@@ -58,11 +58,11 @@ namespace AzureChaos.Core.Interfaces
 
         private void InsertVirtualMachineAvailabilitySetDomainResults(string availabilitySetId, int domainNumber)
         {
-            var virtualMachineQuery = TableQuery.CombineFilters((TableQuery.GenerateFilterCondition("AvailableSetId",
+            var virtualMachineQuery = TableQuery.CombineFilters(TableQuery.GenerateFilterCondition("AvailableSetId",
                     QueryComparisons.Equal,
-                    availabilitySetId)),
+                    availabilitySetId),
                 TableOperators.And,
-                _azureSettings.Chaos.AvailabilitySetChaos.FaultDomainEnabled
+                azureClient.AzureSettings.Chaos.AvailabilitySetChaos.FaultDomainEnabled
                     ? TableQuery.GenerateFilterConditionForInt("FaultDomain",
                         QueryComparisons.Equal,
                         domainNumber)
@@ -72,21 +72,21 @@ namespace AzureChaos.Core.Interfaces
 
             //TableQuery.GenerateFilterConditionForInt("AvailabilityZone", QueryComparisons.GreaterThanOrEqual, 0);
             var virtualMachinesTableQuery = new TableQuery<VirtualMachineCrawlerResponse>().Where(virtualMachineQuery);
-            var crawledVirtualMachinesResults = StorageAccountProvider.GetEntities(virtualMachinesTableQuery, _azureSettings.VirtualMachineCrawlerTableName);
+            var crawledVirtualMachinesResults = StorageAccountProvider.GetEntities(virtualMachinesTableQuery, StorageTableNames.VirtualMachineCrawlerTableName);
             var virtualMachinesResults = crawledVirtualMachinesResults.ToList();
             if (!virtualMachinesResults.Any())
             {
                 return;
             }
 
-            var domainFlag = !_azureSettings.Chaos.AvailabilitySetChaos.UpdateDomainEnabled;
-            var scheduledRulesbatchOperation = VirtualMachineHelper.CreateScheduleEntityForAvailabilitySet(virtualMachinesResults, _azureSettings.Chaos.SchedulerFrequency, domainFlag);
+            var domainFlag = !azureClient.AzureSettings.Chaos.AvailabilitySetChaos.UpdateDomainEnabled;
+            var scheduledRulesbatchOperation = VirtualMachineHelper.CreateScheduleEntityForAvailabilitySet(virtualMachinesResults, azureClient.AzureSettings.Chaos.SchedulerFrequency, domainFlag);
             if (scheduledRulesbatchOperation.Count <= 0)
             {
                 return;
             }
 
-            var table = StorageAccountProvider.CreateOrGetTable(_azureSettings.ScheduledRulesTable);
+            var table = StorageAccountProvider.CreateOrGetTable(StorageTableNames.ScheduledRulesTableName);
             table.ExecuteBatch(scheduledRulesbatchOperation);
         }
 
@@ -96,7 +96,7 @@ namespace AzureChaos.Core.Interfaces
             var possibleAvailabilitySetDomainCombinationVmCount = new Dictionary<string, int>();
             var meanTimeQuery = TableQuery.GenerateFilterConditionForDate("scheduledExecutionTime",
                 QueryComparisons.GreaterThanOrEqual,
-                DateTimeOffset.UtcNow.AddMinutes(-_azureSettings.Chaos.SchedulerFrequency));
+                DateTimeOffset.UtcNow.AddMinutes(-azureClient.AzureSettings.Chaos.SchedulerFrequency));
 
             var recentlyExecutedAvailabilitySetDomainCombinationQuery = TableQuery.GenerateFilterCondition(
                 "PartitionKey",
@@ -108,13 +108,13 @@ namespace AzureChaos.Core.Interfaces
                 recentlyExecutedAvailabilitySetDomainCombinationQuery);
 
             var scheduledQuery = new TableQuery<ScheduledRules>().Where(recentlyExecutedFinalAvailabilitySetDomainQuery);
-            var executedAvilabilitySetCombinationResults = StorageAccountProvider.GetEntities(scheduledQuery, _azureSettings.ScheduledRulesTable);
+            var executedAvilabilitySetCombinationResults = StorageAccountProvider.GetEntities(scheduledQuery, StorageTableNames.ScheduledRulesTableName);
             if (executedAvilabilitySetCombinationResults == null)
                 return recentlyExecutedAvailabilitySetDomainCombination;
 
             foreach (var eachExecutedAvilabilitySetCombinationResults in executedAvilabilitySetCombinationResults)
             {
-                if (_azureSettings.Chaos.AvailabilitySetChaos.FaultDomainEnabled)
+                if (azureClient.AzureSettings.Chaos.AvailabilitySetChaos.FaultDomainEnabled)
                 {
                     if (!eachExecutedAvilabilitySetCombinationResults.CombinationKey.Contains("!")) continue;
 
@@ -151,7 +151,7 @@ namespace AzureChaos.Core.Interfaces
             var availabilitySetQuery = TableQuery.GenerateFilterConditionForBool("HasVirtualMachines", QueryComparisons.Equal, true);
             var availabilitySetTableQuery = new TableQuery<AvailabilitySetsCrawlerResponse>().Where(availabilitySetQuery);
 
-            var crawledAvailabilitySetResults = StorageAccountProvider.GetEntities(availabilitySetTableQuery, _azureSettings.AvailabilitySetCrawlerTableName);
+            var crawledAvailabilitySetResults = StorageAccountProvider.GetEntities(availabilitySetTableQuery, StorageTableNames.AvailabilitySetCrawlerTableName);
             if (crawledAvailabilitySetResults == null)
             {
                 return null;
@@ -175,11 +175,11 @@ namespace AzureChaos.Core.Interfaces
             }
 
             var virtualMachineTableQuery = new TableQuery<VirtualMachineCrawlerResponse>().Where(bootStrapQuery);
-            var crawledVirtualMachineResults = StorageAccountProvider.GetEntities(virtualMachineTableQuery, _azureSettings.VirtualMachineCrawlerTableName);
+            var crawledVirtualMachineResults = StorageAccountProvider.GetEntities(virtualMachineTableQuery, StorageTableNames.VirtualMachineCrawlerTableName);
             foreach (var eachVirtualMachine in crawledVirtualMachineResults)
             {
                 string entryIntoPossibleAvailabilitySetDomainCombinationVmCount;
-                if (_azureSettings.Chaos.AvailabilitySetChaos.FaultDomainEnabled)
+                if (azureClient.AzureSettings.Chaos.AvailabilitySetChaos.FaultDomainEnabled)
                 {
                     entryIntoPossibleAvailabilitySetDomainCombinationVmCount = eachVirtualMachine.AvailabilitySetId + "@" + eachVirtualMachine.FaultDomain;
                 }

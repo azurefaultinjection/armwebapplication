@@ -10,10 +10,10 @@ namespace AzureChaos.Core.Helper
     {
         public static List<IResourceGroup> GetResourceGroupsInSubscription()
         {
-            var azure = AzureClient.AzureInstance;
-            var azureSettings = AzureClient.AzureSettings;
-            List<string> blackListedResourceGroupList = azureSettings.Chaos.BlackListedResourceGroupList;
-            List<string> inclusiveOnlyResourceGroupList = azureSettings.Chaos.InclusiveOnlyResourceGroupList;
+            var azureClient = new AzureClient();
+            var azure = azureClient.AzureInstance;
+            List<string> blackListedResourceGroupList = azureClient.AzureSettings.Chaos.BlackListedResourceGroupList;
+            List<string> inclusiveOnlyResourceGroupList = azureClient.AzureSettings.Chaos.InclusiveOnlyResourceGroupList;
             var resourceGroupList = azure.ResourceGroups.List();
             var resourceGroups = resourceGroupList.ToList();
             if (resourceGroups?.Count <= 0)

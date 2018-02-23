@@ -52,12 +52,13 @@ namespace ChaosExecuter.Crawler
                 var virtualMachineScaleSetTable = StorageAccountProvider.CreateOrGetTable(StorageTableNames.VirtualMachinesScaleSetCrawlerTableName);
 
                 var batchTasks = new ConcurrentBag<Task>();
+                var azureClient = new AzureClient();
                 // using parallel here to run all the resource groups parallelly, parallel is 10times faster than normal foreach.
                 Parallel.ForEach(resourceGroups, eachResourceGroup =>
                 {
                     try
                     {
-                        var virtualMachineScaleSetsList = AzureClient.AzureInstance.VirtualMachineScaleSets
+                        var virtualMachineScaleSetsList = azureClient.AzureInstance.VirtualMachineScaleSets
                             .ListByResourceGroup(eachResourceGroup.Name);
                         GetVirtualMachineAndScaleSetBatch(virtualMachineScaleSetsList.ToList(), batchTasks,
                             virtualMachineCloudTable,

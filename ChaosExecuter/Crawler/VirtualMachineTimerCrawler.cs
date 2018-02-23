@@ -35,13 +35,12 @@ namespace ChaosExecuter.Crawler
                 }
 
                 await GetVirtualMachinesByResourceGroups(resourceGroupList, log);
+                log.Info($"timercrawlerforvirtualmachines end  at: {DateTime.UtcNow}");
             }
             catch (Exception ex)
             {
                 log.Error($"timercrawlerforvirtualmachines threw the exception ", ex, "timercrawlerforvirtualmachines");
             }
-
-            log.Info($"timercrawlerforvirtualmachines end  at: {DateTime.UtcNow}");
         }
 
         /// <summary>1. Iterate the resource groups to get the virtual machines for individual resource group.
@@ -60,7 +59,6 @@ namespace ChaosExecuter.Crawler
                 // using parallel here to run all the resource groups parallelly, parallel is 10times faster than normal foreach.
                 Parallel.ForEach(resourceGroups, async eachResourceGroup =>
                 {
-                    log.Info($"timercrawlerforvirtualmachines: crawling virtual machines for  rg: {eachResourceGroup.Name}");
                     var virtualMachinesByResourceGroup = await GetVirtualMachinesByResourceGroup(eachResourceGroup, log);
                     if (virtualMachinesByResourceGroup == null) return;
                     var virtualMachineList = virtualMachinesByResourceGroup.ToList();
@@ -94,8 +92,9 @@ namespace ChaosExecuter.Crawler
         /// <returns>List of virtual machines which excludes the load balancer virtual machines and availability set virtual machines.</returns>
         private static async Task<IEnumerable<IVirtualMachine>> GetVirtualMachinesByResourceGroup(IResourceGroup resourceGroup, TraceWriter log)
         {
-            var loadBalancersVirtualMachines = GetVirtualMachinesFromLoadBalancers(resourceGroup.Name, log);
-            var pagedCollection = AzureClient.AzureInstance.VirtualMachines.ListByResourceGroupAsync(resourceGroup.Name);
+            var azureClient = new AzureClient();
+            var loadBalancersVirtualMachines = GetVirtualMachinesFromLoadBalancers(resourceGroup.Name, azureClient);
+            var pagedCollection = azureClient.AzureInstance.VirtualMachines.ListByResourceGroupAsync(resourceGroup.Name);
             var tasks = new List<Task>
             {
                 loadBalancersVirtualMachines,
@@ -130,7 +129,7 @@ namespace ChaosExecuter.Crawler
             }
 
             var batchOperation = new TableBatchOperation();
-            Parallel.ForEach(virtualMachines, eachVirtualMachine =>
+            foreach (var eachVirtualMachine in virtualMachines)
             {
                 try
                 {
@@ -141,20 +140,19 @@ namespace ChaosExecuter.Crawler
                 {
                     log.Error($"timercrawlerforvirtualmachines threw the exception ", e, "InsertEntitiesIntoTable");
                 }
-            });
+            }
 
             return batchOperation;
         }
 
         /// <summary>Get the list of the load balancer virtual machines by resource group.</summary>
         /// <param name="resourceGroup">The resource group name.</param>
-        /// <param name="log">Trace writer instance</param>
+        /// <param name="azureClient"></param>
         /// <returns>Returns the list of vm ids which are in the load balancers.</returns>
-        private static async Task<List<string>> GetVirtualMachinesFromLoadBalancers(string resourceGroup, TraceWriter log)
+        private static async Task<List<string>> GetVirtualMachinesFromLoadBalancers(string resourceGroup, AzureClient azureClient)
         {
-            log.Info($"timercrawlerforvirtualmachines getting the load balancer virtual machines");
             var virtualMachinesIds = new List<string>();
-            var pagedCollection = await AzureClient.AzureInstance.LoadBalancers.ListByResourceGroupAsync(resourceGroup);
+            var pagedCollection = await azureClient.AzureInstance.LoadBalancers.ListByResourceGroupAsync(resourceGroup);
             if (pagedCollection == null)
             {
                 return virtualMachinesIds;

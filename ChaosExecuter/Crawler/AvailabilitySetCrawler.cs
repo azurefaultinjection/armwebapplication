@@ -54,8 +54,9 @@ namespace ChaosExecuter.Crawler
                 var virtualMachineConcurrentBag = new ConcurrentBag<IEnumerable<IGrouping<string, IVirtualMachine>>>();
                 var batchTasks = new ConcurrentBag<Task>();
 
+                var azureClient = new AzureClient();
                 // get the availability set batch operation and vm list by availability sets
-                SetTheVirtualMachinesAndAvailabilitySetBatchTask(resourceGroupList, virtualMachineConcurrentBag, batchTasks, log);
+                SetTheVirtualMachinesAndAvailabilitySetBatchTask(resourceGroupList, virtualMachineConcurrentBag, batchTasks, azureClient, log);
 
                 // get the virtual machine table batch operation parallely
                 IncludeVirtualMachineTask(virtualMachineConcurrentBag, batchTasks, log);
@@ -102,10 +103,12 @@ namespace ChaosExecuter.Crawler
         /// <param name="resourceGroupList"></param>
         /// <param name="virtualMachinesConcurrent"></param>
         /// <param name="batchTasks"></param>
+        /// <param name="azureClient"></param>
         /// <param name="log"></param>
         private static void SetTheVirtualMachinesAndAvailabilitySetBatchTask(IEnumerable<IResourceGroup> resourceGroupList,
             ConcurrentBag<IEnumerable<IGrouping<string, IVirtualMachine>>> virtualMachinesConcurrent,
             ConcurrentBag<Task> batchTasks,
+            AzureClient azureClient,
             TraceWriter log)
         {
             var availabilitySetCloudTable = StorageAccountProvider.CreateOrGetTable(StorageTableNames.AvailabilitySetCrawlerTableName);
@@ -114,7 +117,7 @@ namespace ChaosExecuter.Crawler
                 try
                 {
                     var availabilitySetIds = new List<string>();
-                    var availabilitySetsByResourceGroup = AzureClient.AzureInstance.AvailabilitySets.ListByResourceGroup(eachResourceGroup.Name);
+                    var availabilitySetsByResourceGroup = azureClient.AzureInstance.AvailabilitySets.ListByResourceGroup(eachResourceGroup.Name);
                     // table batch operation currently allows only 100 per batch, So ensuring the one batch operation will have only 100 items
                     var setsByResourceGroup = availabilitySetsByResourceGroup.ToList();
                     for (var i = 0; i < setsByResourceGroup.Count; i += TableConstants.TableServiceBatchMaximumOperations)
@@ -134,7 +137,7 @@ namespace ChaosExecuter.Crawler
                     }
 
                     // Get the virtual machines by resource group and by availability set ids
-                    var virtualMachinesByAvailabilitySetId = GetVirtualMachineListByResourceGroup(eachResourceGroup.Name, availabilitySetIds);
+                    var virtualMachinesByAvailabilitySetId = GetVirtualMachineListByResourceGroup(eachResourceGroup.Name, availabilitySetIds, azureClient);
                     if (virtualMachinesByAvailabilitySetId != null && virtualMachinesByAvailabilitySetId.Count > 0)
                     {
                         virtualMachinesConcurrent.Add(virtualMachinesByAvailabilitySetId);
@@ -151,11 +154,14 @@ namespace ChaosExecuter.Crawler
         /// <summary>Get the virtual machines by resource group and availability set ids.</summary>
         /// <param name="resourceGroupName"></param>
         /// <param name="availabilitySetIds"></param>
+        /// <param name="azureClient"></param>
         /// <returns></returns>
-        private static IList<IGrouping<string, IVirtualMachine>> GetVirtualMachineListByResourceGroup(string resourceGroupName, List<string> availabilitySetIds)
+        private static IList<IGrouping<string, IVirtualMachine>> GetVirtualMachineListByResourceGroup(string resourceGroupName, 
+            List<string> availabilitySetIds,
+            AzureClient azureClient)
         {
             // Get the virtual machines by resource group
-            var virtualMachinesList = AzureClient.AzureInstance.VirtualMachines.ListByResourceGroup(resourceGroupName).ToList();
+            var virtualMachinesList = azureClient.AzureInstance.VirtualMachines.ListByResourceGroup(resourceGroupName).ToList();
             if (!virtualMachinesList.Any())
             {
                 return null;
@@ -173,7 +179,9 @@ namespace ChaosExecuter.Crawler
         /// <param name="availabilitySetIdList">List of availability set,
         /// which will be using to filter the virtual machine list by availability set ids</param>
         /// <returns></returns>
-        private static TableBatchOperation GetAvailabilitySetBatchOperation(IEnumerable<IAvailabilitySet> availabilitySetsByResourceGroup, List<string> availabilitySetIdList)
+        private static TableBatchOperation GetAvailabilitySetBatchOperation(
+            IEnumerable<IAvailabilitySet> availabilitySetsByResourceGroup,
+            List<string> availabilitySetIdList)
         {
             var availabilitySetBatchOperation = new TableBatchOperation();
             foreach (var eachAvailabilitySet in availabilitySetsByResourceGroup)

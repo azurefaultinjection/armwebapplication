@@ -17,7 +17,7 @@ namespace ChaosExecuter.Trigger
     {
         // TODO will be adding the CRON expression from the config.
         /// <summary>Every 5 mints </summary>
-        [FunctionName("TimelyTrigger")]
+       // [FunctionName("TimelyTrigger")]
         public static async Task Run([TimerTrigger("0 */15 * * * *")]TimerInfo myTimer, [OrchestrationClient]
         DurableOrchestrationClient starter, TraceWriter log)
         {
@@ -70,16 +70,17 @@ namespace ChaosExecuter.Trigger
         {
             try
             {
+                var azureSettings = new AzureClient().AzureSettings;
                 var dateFilterByUtc = TableQuery.GenerateFilterConditionForDate("scheduledExecutionTime", QueryComparisons.GreaterThanOrEqual,
                     DateTimeOffset.UtcNow);
 
                 var dateFilterByFrequency = TableQuery.GenerateFilterConditionForDate("scheduledExecutionTime", QueryComparisons.LessThanOrEqual,
-                    DateTimeOffset.UtcNow.AddMinutes(AzureClient.AzureSettings.Chaos.TriggerFrequency));
+                    DateTimeOffset.UtcNow.AddMinutes(azureSettings.Chaos.TriggerFrequency));
 
                 var filter = TableQuery.CombineFilters(dateFilterByUtc, TableOperators.And, dateFilterByFrequency);
                 var scheduledQuery = new TableQuery<ScheduledRules>().Where(filter);
 
-                return StorageAccountProvider.GetEntities(scheduledQuery, AzureClient.AzureSettings.ScheduledRulesTable);
+                return StorageAccountProvider.GetEntities(scheduledQuery, StorageTableNames.ScheduledRulesTableName);
             }
             catch (Exception e)
             {

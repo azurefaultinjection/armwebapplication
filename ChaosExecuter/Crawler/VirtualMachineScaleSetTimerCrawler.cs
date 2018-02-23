@@ -48,6 +48,7 @@ namespace ChaosExecuter.Crawler
         {
             try
             {
+                var azureClient = new AzureClient();
                 var virtualMachineCloudTable = StorageAccountProvider.CreateOrGetTable(StorageTableNames.VirtualMachineCrawlerTableName);
                 var virtualMachineScaleSetTable = StorageAccountProvider.CreateOrGetTable(StorageTableNames.VirtualMachinesScaleSetCrawlerTableName);
 
@@ -57,7 +58,7 @@ namespace ChaosExecuter.Crawler
                 {
                     try
                     {
-                        var virtualMachineScaleSetsList = AzureClient.AzureInstance.VirtualMachineScaleSets
+                        var virtualMachineScaleSetsList = azureClient.AzureInstance.VirtualMachineScaleSets
                             .ListByResourceGroup(eachResourceGroup.Name);
                         GetVirtualMachineAndScaleSetBatch(virtualMachineScaleSetsList.ToList(), batchTasks,
                             virtualMachineCloudTable,

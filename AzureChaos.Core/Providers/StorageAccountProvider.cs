@@ -4,7 +4,6 @@ using Microsoft.WindowsAzure.Storage.Table;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 
 namespace AzureChaos.Core.Providers
 {
@@ -16,12 +15,12 @@ namespace AzureChaos.Core.Providers
         /// <summary>Default format for the storage connection string.</summary>
         private const string ConnectionStringFormat = "DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1};EndpointSuffix=core.windows.net";
         private static readonly CloudStorageAccount storageAccount;
-
         static StorageAccountProvider()
         {
+            var azureSettings = new AzureClient().AzureSettings;
             storageAccount = CloudStorageAccount.Parse(
                                 string.Format(ConnectionStringFormat,
-                                              AzureClient.AzureSettings.Client.StorageAccountName,
+                                    azureSettings.Client.StorageAccountName,
                                               "b7yYCgyI9jg5fsRCr08tHzeic0CT5pelmpb2ZMcBaZKWhe8HdycOOs9r3luB2xygOwrbxFBnxLpysjzURKkQLQ=="));
         }
 

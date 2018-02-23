@@ -4,6 +4,7 @@ using Microsoft.WindowsAzure.Storage.Table;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using AzureChaos.Core.Entity;
 
 namespace AzureChaos.Core.Helper
 {
@@ -31,10 +32,69 @@ namespace AzureChaos.Core.Helper
             }
         }
 
-        public static List<T> QueryByMeanTime<T>(AzureSettings azureSettings, string tableName, string filter = "") where T : ITableEntity, new()
+        public static List<T> QueryCrawlerResponseByMeanTime<T>(AzureSettings azureSettings,
+            string tableName,
+            string filter = "") where T : CrawlerResponse, new()
         {
             var tableQuery = new TableQuery<T>();
-            tableQuery = tableQuery.Where(GetInsertionDatetimeFilter(azureSettings, filter));
+            var dateFilter = TableQuery.CombineFilters(TableQuery.GenerateFilterConditionForDate("TimeStamp",
+                    QueryComparisons.LessThanOrEqual,
+                    DateTimeOffset.UtcNow),
+                TableOperators.And,
+                TableQuery.GenerateFilterConditionForDate("TimeStamp",
+                    QueryComparisons.GreaterThanOrEqual,
+                    DateTimeOffset.UtcNow.AddHours(-azureSettings.Chaos.CrawlerFrequency)));
+            var combineFilter = !string.IsNullOrWhiteSpace(filter)
+                ? TableQuery.CombineFilters(dateFilter,
+                    TableOperators.And,
+                    filter)
+                : dateFilter;
+            tableQuery = tableQuery.Where(combineFilter);
+            var resultsSet = StorageAccountProvider.GetEntities(tableQuery, tableName);
+            return resultsSet.ToList();
+        }
+
+        public static List<ScheduledRules> QuerySchedulesByMeanTime<T>(AzureSettings azureSettings,
+            string tableName,
+            string filter = "")
+        {
+            var tableQuery = new TableQuery<ScheduledRules>();
+            var dateFilter = TableQuery.CombineFilters(TableQuery.GenerateFilterConditionForDate("ScheduledExecutionTime",
+                    QueryComparisons.LessThanOrEqual,
+                    DateTimeOffset.UtcNow),
+                TableOperators.And,
+                TableQuery.GenerateFilterConditionForDate("ScheduledExecutionTime",
+                    QueryComparisons.GreaterThanOrEqual,
+                    DateTimeOffset.UtcNow.AddHours(-azureSettings.Chaos.SchedulerFrequency)));
+            var combineFilter = !string.IsNullOrWhiteSpace(filter)
+                ? TableQuery.CombineFilters(dateFilter,
+                    TableOperators.And,
+                    filter)
+                : dateFilter;
+            tableQuery = tableQuery.Where(combineFilter);
+            var resultsSet = StorageAccountProvider.GetEntities(tableQuery, tableName);
+            return resultsSet.ToList();
+        }
+
+        public static List<EventActivity> QueryActivitiesByMeanTime(AzureSettings azureSettings,
+            string tableName,
+            string filter = "")
+        {
+            var tableQuery = new TableQuery<EventActivity>();
+            var dateFilter = TableQuery.CombineFilters(TableQuery.GenerateFilterConditionForDate("EntryInsertionTime",
+                    QueryComparisons.LessThanOrEqual,
+                    DateTimeOffset.UtcNow),
+                TableOperators.And,
+                TableQuery.GenerateFilterConditionForDate("EntryInsertionTime",
+                    QueryComparisons.GreaterThanOrEqual,
+                    DateTimeOffset.UtcNow.AddHours(-azureSettings.Chaos.MeanTime)));
+            var combineFilter = !string.IsNullOrWhiteSpace(filter)
+                ? TableQuery.CombineFilters(dateFilter,
+                    TableOperators.And,
+                    filter)
+                : dateFilter;
+
+            tableQuery = tableQuery.Where(combineFilter);
             var resultsSet = StorageAccountProvider.GetEntities(tableQuery, tableName);
             return resultsSet.ToList();
         }
@@ -59,11 +119,35 @@ namespace AzureChaos.Core.Helper
             return resultsSet.ToList();
         }
 
-        private static string GetInsertionDatetimeFilter(AzureSettings azureSettings, string combinedFilter = "")
+        public static List<T> QueryByFromToDate<T>(DateTimeOffset fromDate,
+            DateTimeOffset toDate,
+            string propertyName,
+            string tableName)
+            where T : ITableEntity, new()
         {
-            var dateFilter = TableQuery.CombineFilters(TableQuery.GenerateFilterConditionForDate("EntryInsertionTime", QueryComparisons.LessThanOrEqual, DateTimeOffset.UtcNow),
+            var tableQuery = new TableQuery<T>();
+            var dateFilter = TableQuery.CombineFilters(
+                TableQuery.GenerateFilterConditionForDate(propertyName, QueryComparisons.GreaterThanOrEqual,
+                    fromDate),
                 TableOperators.And,
-                TableQuery.GenerateFilterConditionForDate("EntryInsertionTime", QueryComparisons.GreaterThanOrEqual, DateTimeOffset.UtcNow.AddHours(-azureSettings.Chaos.SchedulerFrequency)));
+                TableQuery.GenerateFilterConditionForDate(propertyName, QueryComparisons.LessThanOrEqual,
+                    toDate));
+            tableQuery = tableQuery.Where(dateFilter);
+            var resultsSet = StorageAccountProvider.GetEntities(tableQuery, tableName);
+            return resultsSet.ToList();
+        }
+
+        private static string GetInsertionDatetimeFilter(AzureSettings azureSettings,
+            string propertyName,
+            string combinedFilter = "")
+        {
+            var dateFilter = TableQuery.CombineFilters(TableQuery.GenerateFilterConditionForDate(propertyName,
+                    QueryComparisons.LessThanOrEqual,
+                    DateTimeOffset.UtcNow),
+                TableOperators.And,
+                TableQuery.GenerateFilterConditionForDate(propertyName,
+                    QueryComparisons.GreaterThanOrEqual,
+                    DateTimeOffset.UtcNow.AddHours(-azureSettings.Chaos.SchedulerFrequency)));
             return !string.IsNullOrWhiteSpace(combinedFilter)
                 ? TableQuery.CombineFilters(dateFilter,
                     TableOperators.And,

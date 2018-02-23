@@ -1,8 +1,8 @@
-﻿using AzureChaos.Core.Entity;
+﻿using AzureChaos.Core.Constants;
+using AzureChaos.Core.Entity;
 using AzureChaos.Core.Enums;
 using AzureChaos.Core.Helper;
 using AzureChaos.Core.Models;
-using AzureChaos.Core.Models.Configs;
 using AzureChaos.Core.Providers;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.WindowsAzure.Storage.Table;
@@ -14,7 +14,7 @@ namespace AzureChaos.Core.Interfaces
 {
     public class AvailabilityZoneRuleEngine : IRuleEngine
     {
-        private readonly AzureSettings _azureSettings = AzureClient.AzureSettings;
+        private AzureClient azureClient = new AzureClient();
 
         public void CreateRule(TraceWriter log)
         {
@@ -60,16 +60,16 @@ namespace AzureChaos.Core.Interfaces
             var virtualMachinesTableQuery = new TableQuery<VirtualMachineCrawlerResponse>().Where(virtualMachineQuery);
             var crawledVirtualMachinesResults = StorageAccountProvider.GetEntities(
                 virtualMachinesTableQuery,
-                _azureSettings.VirtualMachineCrawlerTableName);
+                StorageTableNames.VirtualMachineCrawlerTableName);
 
             var virtualMachinesResults = crawledVirtualMachinesResults.ToList();
             if (!virtualMachinesResults.Any()) return;
             var scheduledRulesbatchOperation = VirtualMachineHelper.CreateScheduleEntityForAvailabilityZone(
                 virtualMachinesResults,
-                _azureSettings.Chaos.SchedulerFrequency);
+                azureClient.AzureSettings.Chaos.SchedulerFrequency);
 
             if (scheduledRulesbatchOperation.Count <= 0) return;
-            var table = StorageAccountProvider.CreateOrGetTable(_azureSettings.ScheduledRulesTable);
+            var table = StorageAccountProvider.CreateOrGetTable(StorageTableNames.ScheduledRulesTableName);
             table.ExecuteBatch(scheduledRulesbatchOperation);
         }
 
@@ -79,7 +79,7 @@ namespace AzureChaos.Core.Interfaces
             var possibleAvailabilityZoneRegionCombinationVmCount = new Dictionary<string, int>();
             var meanTimeQuery = TableQuery.GenerateFilterConditionForDate("scheduledExecutionTime",
                 QueryComparisons.GreaterThanOrEqual,
-                DateTimeOffset.UtcNow.AddMinutes(-_azureSettings.Chaos.SchedulerFrequency));
+                DateTimeOffset.UtcNow.AddMinutes(-azureClient.AzureSettings.Chaos.SchedulerFrequency));
 
             var recentlyExecutedAvailabilityZoneRegionCombinationQuery = TableQuery.GenerateFilterCondition(
                 "PartitionKey",
@@ -92,7 +92,7 @@ namespace AzureChaos.Core.Interfaces
 
             var scheduledQuery = new TableQuery<ScheduledRules>().Where(recentlyExecutedFinalAvailabilityZoneRegionQuery);
             var executedAvilabilityZoneCombinationResults = StorageAccountProvider.GetEntities(scheduledQuery,
-                _azureSettings.ScheduledRulesTable);
+                StorageTableNames.ScheduledRulesTableName);
 
             if (executedAvilabilityZoneCombinationResults == null)
                 return recentlyExecutedAvailabilityZoneRegionCombination;
@@ -117,14 +117,13 @@ namespace AzureChaos.Core.Interfaces
 
         private List<string> GetAllPossibleAvailabilityZoneRegionCombination()
         {
-            //virtualMachineTable = storageAccountProvider.CreateOrGetTable(storageAccount, azureSettings.VirtualMachineCrawlerTableName);
             var possibleAvailabilityZoneRegionCombinationVmCount = new Dictionary<string, int>();
             var crawledAvailabilityZoneVmQuery =
                 TableQuery.GenerateFilterConditionForInt("AvailabilityZone", QueryComparisons.GreaterThan, 0);
 
             var availabilityZoneTableQuery = new TableQuery<VirtualMachineCrawlerResponse>().Where(crawledAvailabilityZoneVmQuery);
             var crawledVirtualMachinesResults = StorageAccountProvider.GetEntities(availabilityZoneTableQuery,
-                _azureSettings.VirtualMachineCrawlerTableName);
+                StorageTableNames.VirtualMachineCrawlerTableName);
 
             foreach (var eachCrawledVirtualMachinesResult in crawledVirtualMachinesResults)
             {
