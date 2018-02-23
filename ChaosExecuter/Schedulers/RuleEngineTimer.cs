@@ -35,20 +35,20 @@ namespace ChaosExecuter.Schedulers
             {
                 case VirtualMachineGroup.VirtualMachines:
                     log.Info("C# RuleEngine: Virtual Machine Rule engine got picked");
-                    IRuleEngine vm = new VirtualMachineRuleEngine();
-                    vm.CreateRule(log);
+                    IRuleEngine virtualMachine = new VirtualMachineRuleEngine();
+                    virtualMachine.CreateRule(log);
                     break;
 
                 case VirtualMachineGroup.AvailabilitySets:
                     log.Info("C# RuleEngine: AvailabilitySets Rule engine got picked");
-                    IRuleEngine availabilityset = new AvailabilitySetRuleEngine();
-                    availabilityset.CreateRule(log);
+                    IRuleEngine availabilitySet = new AvailabilitySetRuleEngine();
+                    availabilitySet.CreateRule(log);
                     break;
 
                 case VirtualMachineGroup.VirtualMachineScaleSets:
                     log.Info("C# RuleEngine: ScaleSets Rule engine got picked");
-                    IRuleEngine vmss = new ScaleSetRuleEngine();
-                    vmss.CreateRule(log);
+                    IRuleEngine virtualMachineScaleSet = new ScaleSetRuleEngine();
+                    virtualMachineScaleSet.CreateRule(log);
                     break;
 
                 case VirtualMachineGroup.AvailabilityZones:

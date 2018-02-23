@@ -5,12 +5,12 @@
     /// </summary>
     public class StorageTableNames
     {
-        public static string ResourceGroupCrawlerTableName = "tblchaosresourcegroup";
-        public static string VirtualMachineCrawlerTableName = "tblchaosvirtualmachines";
-        public static string AvailabilitySetCrawlerTableName = "tblchaosavailabilityset";
-        public static string VirtualMachinesScaleSetCrawlerTableName = "tblchaosscalesets";
-        public static string AvailabilityZoneCrawlerTableName = "tblchaosavailabilityzone";
-        public static string ActivityLogTableName = "tblchaosactivitylog";
-        public static string ScheduledRulesTableName = "tblchaosscheduledrules";
+        public const string ResourceGroupCrawlerTableName = "tblchaosresourcegroup";
+        public const string VirtualMachineCrawlerTableName = "tblchaosvirtualmachines";
+        public const string AvailabilitySetCrawlerTableName = "tblchaosavailabilityset";
+        public const string VirtualMachinesScaleSetCrawlerTableName = "tblchaosscalesets";
+        public const string AvailabilityZoneCrawlerTableName = "tblchaosavailabilityzone";
+        public const string ActivityLogTableName = "tblchaosactivitylog";
+        public const string ScheduledRulesTableName = "tblchaosscheduledrules";
     }
 }

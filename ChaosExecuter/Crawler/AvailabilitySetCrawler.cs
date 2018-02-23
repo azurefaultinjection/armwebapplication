@@ -63,7 +63,6 @@ namespace ChaosExecuter.Crawler
 
                 // execute all batch operation as parallel
                 await Task.WhenAll(batchTasks);
-
             }
             catch (Exception ex)
             {

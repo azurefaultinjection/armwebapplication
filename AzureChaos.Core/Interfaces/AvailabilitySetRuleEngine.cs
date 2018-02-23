@@ -9,6 +9,7 @@ using Microsoft.WindowsAzure.Storage.Table;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using AzureChaos.Core.Constants;
 
 namespace AzureChaos.Core.Interfaces
 {
@@ -21,7 +22,7 @@ namespace AzureChaos.Core.Interfaces
             try
             {
                 log.Info("Availability RuleEngine: Started the creating rules for the availability set.");
-                var random = new Random();
+                Random random = new Random();
                 //1) OpenSearch with Vm Count > 0
                 var possibleAvailabilitySets = GetPossibleAvailabilitySets();
                 if (possibleAvailabilitySets == null)
@@ -148,7 +149,7 @@ namespace AzureChaos.Core.Interfaces
 
         private List<string> GetPossibleAvailabilitySets()
         {
-            var availabilitySetQuery = TableQuery.GenerateFilterConditionForBool("HasVirtualMachines", QueryComparisons.Equal, true);
+            string availabilitySetQuery = TableQuery.GenerateFilterConditionForBool("HasVirtualMachines", QueryComparisons.Equal, true);
             var availabilitySetTableQuery = new TableQuery<AvailabilitySetsCrawlerResponse>().Where(availabilitySetQuery);
 
             var crawledAvailabilitySetResults = StorageAccountProvider.GetEntities(availabilitySetTableQuery, StorageTableNames.AvailabilitySetCrawlerTableName);
@@ -157,19 +158,19 @@ namespace AzureChaos.Core.Interfaces
                 return null;
             }
 
-            var possibleAvailabilitySetDomainCombinationVmCount = new Dictionary<string, int>();
+            Dictionary<string, int> possibleAvailabilitySetDomainCombinationVmCount = new Dictionary<string, int>();
             var bootStrapQuery = string.Empty;
             var initialQuery = true;
             foreach (var eachAvailabilitySet in crawledAvailabilitySetResults)
             {
                 if (initialQuery)
                 {
-                    bootStrapQuery = TableQuery.GenerateFilterCondition("AvailableSetId", QueryComparisons.Equal, ConvertToProperAvailableSetId(eachAvailabilitySet.RowKey));
+                    bootStrapQuery = TableQuery.GenerateFilterCondition("AvailabilitySetId", QueryComparisons.Equal, ConvertToProperAvailableSetId(eachAvailabilitySet.RowKey));
                     initialQuery = false;
                 }
                 else
                 {
-                    var localAvailabilitySetQuery = TableQuery.GenerateFilterCondition("AvailableSetId", QueryComparisons.Equal, ConvertToProperAvailableSetId(eachAvailabilitySet.RowKey));
+                    var localAvailabilitySetQuery = TableQuery.GenerateFilterCondition("AvailabilitySetId", QueryComparisons.Equal, ConvertToProperAvailableSetId(eachAvailabilitySet.RowKey));
                     bootStrapQuery = TableQuery.CombineFilters(localAvailabilitySetQuery, TableOperators.Or, bootStrapQuery);
                 }
             }
@@ -181,11 +182,11 @@ namespace AzureChaos.Core.Interfaces
                 string entryIntoPossibleAvailabilitySetDomainCombinationVmCount;
                 if (azureClient.AzureSettings.Chaos.AvailabilitySetChaos.FaultDomainEnabled)
                 {
-                    entryIntoPossibleAvailabilitySetDomainCombinationVmCount = eachVirtualMachine.AvailabilitySetId + "@" + eachVirtualMachine.FaultDomain;
+                    entryIntoPossibleAvailabilitySetDomainCombinationVmCount = eachVirtualMachine.AvailabilitySetId + Delimeters.Exclamatory.ToString() + eachVirtualMachine.FaultDomain;
                 }
                 else
                 {
-                    entryIntoPossibleAvailabilitySetDomainCombinationVmCount = eachVirtualMachine.AvailabilitySetId + "@" + eachVirtualMachine.UpdateDomain;
+                    entryIntoPossibleAvailabilitySetDomainCombinationVmCount = eachVirtualMachine.AvailabilitySetId + Delimeters.At.ToString() + eachVirtualMachine.UpdateDomain;
                 }
 
                 if (possibleAvailabilitySetDomainCombinationVmCount.ContainsKey(entryIntoPossibleAvailabilitySetDomainCombinationVmCount))
@@ -204,8 +205,8 @@ namespace AzureChaos.Core.Interfaces
 
         private static string ConvertToProperAvailableSetId(string rowKey)
         {
-            var rowKeyChunks = rowKey.Split('!');
-            return string.Join("/", rowKeyChunks).Replace(rowKeyChunks.Last(), rowKeyChunks.Last().ToUpper());
+            var rowKeySplit = rowKey.Split(Delimeters.Exclamatory);
+            return string.Join(Delimeters.ForwardSlash.ToString(), rowKeySplit).Replace(rowKeySplit.Last(), rowKeySplit.Last().ToUpper());
         }
     }
 }

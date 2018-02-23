@@ -33,7 +33,6 @@ namespace ChaosExecuter.Crawler
                 return;
             }
 
-
             await GetScaleSetsForResourceGroupsAsync(resourceGroupList, log);
         }
 
@@ -70,7 +69,6 @@ namespace ChaosExecuter.Crawler
                         log.Error($"timercrawlerforvirtualmachinescaleset threw the exception ", e,
                             "GetScaleSetsForResourceGroups: for the resource group " + eachResourceGroup.Name);
                     }
-
                 });
 
                 // execute all batch operation as parallel
@@ -190,7 +188,6 @@ namespace ChaosExecuter.Crawler
             var virtualMachineScaleSetEntity = new VirtualMachineScaleSetCrawlerResponse(virtualMachineScaleSet.ResourceGroupName, virtualMachineScaleSet.Id.Replace(Delimeters.ForwardSlash, Delimeters.Exclamatory))
             {
                 ResourceName = virtualMachineScaleSet.Name,
-                ResourceType = virtualMachineScaleSet.Type,
                 RegionName = virtualMachineScaleSet.RegionName,
                 Id = virtualMachineScaleSet.Id
             };

@@ -95,13 +95,13 @@ namespace AzureChaos.Core.Helper
             if (executedResults == null)
             {
                 var chaos = enabledChaos.Where(x => x.Value);
-                return chaos?.Select(x => x.Key).ToList();
+                return chaos.Select(x => x.Key).ToList();
             }
 
             var scheduledRuleses = executedResults.ToList();
             var executedChaos = scheduledRuleses.Select(x => x.PartitionKey).Distinct().ToList();
             var excludedChaos = enabledChaos.Where(x => x.Value && !executedChaos.Contains(x.Key.ToString(), StringComparer.OrdinalIgnoreCase));
-            return excludedChaos?.Select(x => x.Key).ToList();
+            return excludedChaos.Select(x => x.Key).ToList();
         }
     }
 }
