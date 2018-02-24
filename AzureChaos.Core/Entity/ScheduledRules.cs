@@ -15,13 +15,27 @@ namespace AzureChaos.Core.Entity
         }
 
         public string TriggerData { get; set; }
-
-        public string ExecutorEndPoint { get; set; }
         public string SchedulerSessionId { get; set; }
         public bool IsRollBack { get; set; }
         public DateTime ScheduledExecutionTime { get; set; }
-        public string Status { get; set; }
+        public string ExecutionStatus { get; set; }
         public string ChaosAction { get; set; }
         public string CombinationKey { get; set; }
+        public DateTime ExecutionStartTime { get; set; }
+
+        /// <summary>Event completed date time.</summary>
+        public DateTime? EventCompletedTime { get; set; }
+
+        /// <summary>Initial State of the resource</summary>
+        public string InitialState { get; set; }
+
+        /// <summary>Final State of the resource</summary>
+        public string FinalState { get; set; }
+
+        /// <summary>Error message if anything occured on the time of execution.</summary>
+        public string Warning { get; set; }
+
+        /// <summary>Error message if anything occured on the time of execution.</summary>
+        public string Error { get; set; }
     }
 }

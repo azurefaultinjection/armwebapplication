@@ -34,60 +34,71 @@ namespace ChaosExecuter.Executer
             }
 
             var azureClient = new AzureClient();
-            EventActivity eventActivity = new EventActivity(inputObject.ResourceName);
+            var scheduleRule = new ScheduledRules(inputObject.PartitionKey, inputObject.RowKey)
+            {
+                ExecutionStatus = Status.Started.ToString()
+            };
+
+            if (!azureClient.IsChaosEnabledByGroup(inputObject.PartitionKey))
+            {
+                scheduleRule.Warning = Warnings.ChaosDisabledAfterRules;
+                StorageAccountProvider.Merge(scheduleRule, StorageTableNames.ActivityLogTableName);
+                return false;
+            }
+
             try
             {
                 IVirtualMachine virtualMachine = GetVirtualMachine(azureClient.AzureInstance, inputObject);
                 if (virtualMachine == null)
                 {
-                    log.Info($"VM Chaos : No resource found for the resource name : " + inputObject.ResourceName);
+                    log.Info($"VM Chaos : No resource found for the resource name : " + inputObject.ResourceId);
                     return false;
                 }
 
-                log.Info($"VM Chaos received the action: " + inputObject.Action + " for the virtual machine: " + inputObject.ResourceName);
+                log.Info($"VM Chaos received the action: " + inputObject.Action + " for the virtual machine: " + inputObject.ResourceId);
 
-                if (!Enum.TryParse(virtualMachine.ProvisioningState, out ProvisioningState provisioningState) && provisioningState != ProvisioningState.Succeeded)
+                if (!Enum.TryParse(virtualMachine.ProvisioningState, out ProvisioningState provisioningState) || provisioningState != ProvisioningState.Succeeded)
                 {
-                    log.Info($"VM Chaos :  The vm '" + inputObject.ResourceName + "' is in the state of " + virtualMachine.ProvisioningState + ", so cannont perform the same action " + inputObject.Action);
-                    eventActivity.Status = Status.Failed.ToString();
-                    eventActivity.Error = "Vm provisioning state and action both are same, so couldnot perform the action";
-                    StorageAccountProvider.InsertOrMerge(eventActivity, StorageTableNames.ActivityLogTableName);
+                    log.Info($"VM Chaos :  The vm '" + inputObject.ResourceId + "' is in the state of " + virtualMachine.ProvisioningState + ", so cannont perform the same action " + inputObject.Action);
+                    scheduleRule.ExecutionStatus = Status.Failed.ToString();
+                    scheduleRule.Warning = string.Format(Warnings.ProvisionStateCheck, provisioningState);
+                    StorageAccountProvider.Merge(scheduleRule, StorageTableNames.ActivityLogTableName);
                     return false;
                 }
 
-                SetInitialEventActivity(virtualMachine, inputObject, eventActivity);
+                SetInitialEventActivity(virtualMachine, scheduleRule);
 
                 // if its not valid chaos then update the event table with  warning message and return false
                 bool isValidChaos = IsValidChaos(inputObject.Action, virtualMachine.PowerState);
                 if (!isValidChaos)
                 {
                     log.Info($"VM Chaos- Invalid action: " + inputObject.Action);
-                    eventActivity.Status = Status.Failed.ToString();
-                    eventActivity.Warning = "Invalid Action";
-                    StorageAccountProvider.InsertOrMerge(eventActivity, StorageTableNames.ActivityLogTableName);
+                    scheduleRule.ExecutionStatus = Status.Failed.ToString();
+                    scheduleRule.Warning = Warnings.ActionAndStateAreSame;
+                    StorageAccountProvider.Merge(scheduleRule, StorageTableNames.ActivityLogTableName);
                     return false;
                 }
 
-                eventActivity.Status = Status.Started.ToString();
-                StorageAccountProvider.InsertOrMerge(eventActivity, StorageTableNames.ActivityLogTableName);
-                PerformChaosOnVirtualMachine(inputObject.Action, virtualMachine, eventActivity);
+                StorageAccountProvider.Merge(scheduleRule, StorageTableNames.ActivityLogTableName);
+                PerformChaosOnVirtualMachine(inputObject.Action, virtualMachine, scheduleRule);
                 // Can we break from here to check the status later ?
                 virtualMachine = GetVirtualMachine(azureClient.AzureInstance, inputObject);
                 if (virtualMachine != null)
                 {
-                    eventActivity.EventCompletedDate = DateTime.UtcNow;
-                    eventActivity.FinalState = virtualMachine.PowerState.Value;
+                    scheduleRule.EventCompletedTime = DateTime.UtcNow;
+                    scheduleRule.FinalState = virtualMachine.PowerState.Value;
+                    scheduleRule.ExecutionStatus = Status.Completed.ToString();
                 }
 
-                StorageAccountProvider.InsertOrMerge(eventActivity, StorageTableNames.ActivityLogTableName);
+                StorageAccountProvider.Merge(scheduleRule, StorageTableNames.ActivityLogTableName);
                 log.Info($"VM Chaos Completed");
                 return true;
             }
             catch (Exception ex)
             {
-                eventActivity.Error = ex.Message;
-                eventActivity.Status = Status.Failed.ToString();
-                StorageAccountProvider.InsertOrMerge(eventActivity, StorageTableNames.ActivityLogTableName);
+                scheduleRule.Error = ex.Message;
+                scheduleRule.ExecutionStatus = Status.Failed.ToString();
+                StorageAccountProvider.Merge(scheduleRule, StorageTableNames.ActivityLogTableName);
 
                 // dont throw the error here just handle the error and return the false
                 log.Error($"VM Chaos trigger function threw the exception ", ex, FunctionName);
@@ -117,7 +128,7 @@ namespace ChaosExecuter.Executer
                     log.Error("Virtual Machine action is not valid action");
                     return false;
                 }
-                if (string.IsNullOrWhiteSpace(inputObject.ResourceName))
+                if (string.IsNullOrWhiteSpace(inputObject.ResourceId))
                 {
                     log.Error("Virtual Machine Resource name is not valid name");
                     return false;
@@ -141,9 +152,9 @@ namespace ChaosExecuter.Executer
         /// <summary>Perform the Chaos Operation</summary>
         /// <param name="actionType">Action type</param>
         /// <param name="virtualMachine">Virtual Machine</param>
-        /// <param name="eventActivity">Event activity entity</param>
+        /// <param name="scheduledRules">Event activity entity</param>
         /// <returns></returns>
-        private static void PerformChaosOnVirtualMachine(ActionType actionType, IVirtualMachine virtualMachine, EventActivity eventActivity)
+        private static void PerformChaosOnVirtualMachine(ActionType actionType, IVirtualMachine virtualMachine, ScheduledRules scheduledRules)
         {
             switch (actionType)
             {
@@ -161,7 +172,7 @@ namespace ChaosExecuter.Executer
                     break;
             }
 
-            eventActivity.Status = Status.Executing.ToString();
+            scheduledRules.ExecutionStatus = Status.Executing.ToString();
         }
 
         /// <summary>Check the given action is valid chaos to perform on the vm</summary>
@@ -185,17 +196,11 @@ namespace ChaosExecuter.Executer
 
         /// <summary>Set the initial property of the activity entity</summary>
         /// <param name="virtualMachine">The vm</param>
-        /// <param name="data">Request</param>
-        /// <param name="eventActivity">Event activity entity.</param>
-        private static void SetInitialEventActivity(IVirtualMachine virtualMachine, InputObject data, EventActivity eventActivity)
+        /// <param name="scheduledRules">Event activity entity.</param>
+        private static void SetInitialEventActivity(IVirtualMachine virtualMachine, ScheduledRules scheduledRules)
         {
-            eventActivity.InitialState = virtualMachine.PowerState.Value;
-            eventActivity.Resource = data.ResourceName;
-            eventActivity.ResourceType = virtualMachine.Type;
-            eventActivity.ResourceGroup = data.ResourceGroup;
-            eventActivity.EventType = data.Action.ToString();
-            eventActivity.EventStateDate = DateTime.UtcNow;
-            eventActivity.EntryDate = DateTime.UtcNow;
+            scheduledRules.InitialState = virtualMachine.PowerState.Value;
+            scheduledRules.ExecutionStartTime = DateTime.UtcNow;
         }
 
         /// <summary>Get the virtual machine.</summary>
@@ -204,7 +209,7 @@ namespace ChaosExecuter.Executer
         /// <returns>Returns the virtual machine.</returns>
         private static IVirtualMachine GetVirtualMachine(IAzure azure, InputObject inputObject)
         {
-            return azure.VirtualMachines.GetByResourceGroup(inputObject.ResourceGroup, inputObject.ResourceName);
+            return azure.VirtualMachines.GetByResourceGroup(inputObject.ResourceGroup, inputObject.ResourceId);
         }
     }
 }

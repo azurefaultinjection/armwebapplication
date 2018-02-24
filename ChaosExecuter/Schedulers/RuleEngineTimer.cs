@@ -11,8 +11,8 @@ namespace ChaosExecuter.Schedulers
 {
     public static class RuleEngineTimer
     {
-        // [FunctionName("RuleEngineTimer")]
-        public static void Run([TimerTrigger("0 0 * * * *")]TimerInfo myTimer, TraceWriter log)
+        [FunctionName("RuleEngineTimer")]
+        public static void Run([TimerTrigger("0 */5 * * * *")]TimerInfo myTimer, TraceWriter log)
         {
             log.Info("C# RuleEngine: trigger function started processing the request.");
             var azureClient = new AzureClient();

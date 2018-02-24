@@ -23,7 +23,6 @@ namespace AzureChaos.Core.Helper
 
             return new ScheduledRules(virtualMachineGroup.ToString(), entity.RowKey)
             {
-                ExecutorEndPoint = Mappings.FunctionNameMap[virtualMachineGroup.ToString()],
                 ScheduledExecutionTime = executionTime,
                 TriggerData = GetTriggerData(entity, action),
                 SchedulerSessionId = sessionId
@@ -47,7 +46,6 @@ namespace AzureChaos.Core.Helper
             }
             return new ScheduledRules(VirtualMachineGroup.AvailabilitySets.ToString(), entity.RowKey)
             {
-                ExecutorEndPoint = Mappings.FunctionNameMap[VirtualMachineGroup.AvailabilitySets.ToString()],
                 ScheduledExecutionTime = executionTime,
                 TriggerData = GetTriggerData(entity, action),
                 SchedulerSessionId = sessionId,
@@ -64,7 +62,6 @@ namespace AzureChaos.Core.Helper
 
             return new ScheduledRules(VirtualMachineGroup.AvailabilityZones.ToString(), entity.RowKey)
             {
-                ExecutorEndPoint = Mappings.FunctionNameMap[VirtualMachineGroup.AvailabilityZones.ToString()],
                 ScheduledExecutionTime = executionTime,
                 TriggerData = GetTriggerData(entity, action),
                 SchedulerSessionId = sessionId,
@@ -76,8 +73,10 @@ namespace AzureChaos.Core.Helper
         {
             InputObject triggerdata = new InputObject
             {
+                PartitionKey = crawlerResponse.PartitionKey,
+                RowKey =  crawlerResponse.RowKey,
                 Action = action,
-                ResourceName = crawlerResponse.ResourceName,
+                ResourceId = crawlerResponse.ResourceName,
                 ResourceGroup = crawlerResponse.ResourceGroupName,
                 VirtualMachineScaleSetId = crawlerResponse.PartitionKey.Replace(Delimeters.Exclamatory, Delimeters.ForwardSlash)
             };

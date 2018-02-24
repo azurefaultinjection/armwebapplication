@@ -82,10 +82,7 @@ namespace AzureChaos.Core.Interfaces
             var scheduleEntitiesResourceIds = scheduleEntities == null || !scheduleEntities.Any() ? new List<string>() :
                 scheduleEntities.Select(x => x.RowKey.Replace(Delimeters.Exclamatory, Delimeters.ForwardSlash));
 
-            var activityEntities = ResourceFilterHelper.QueryActivitiesByMeanTime(azureClient.AzureSettings,
-                StorageTableNames.ActivityLogTableName);
-            var activityEntitiesResourceIds = activityEntities == null || !activityEntities.Any() ? new List<string>() : activityEntities.Select(x => x.Id);
-            var result = resultsSet.Where(x => !scheduleEntitiesResourceIds.Contains(x.Id) && !activityEntitiesResourceIds.Contains(x.Id));
+            var result = resultsSet.Where(x => !scheduleEntitiesResourceIds.Contains(x.Id));
             return result.ToList();
         }
 

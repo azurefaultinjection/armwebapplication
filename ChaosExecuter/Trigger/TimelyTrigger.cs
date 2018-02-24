@@ -1,6 +1,6 @@
 using AzureChaos.Core.Constants;
 using AzureChaos.Core.Entity;
-using AzureChaos.Core.Enums;
+using AzureChaos.Core.Helper;
 using AzureChaos.Core.Models;
 using AzureChaos.Core.Providers;
 using Microsoft.Azure.WebJobs;
@@ -10,6 +10,7 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using AzureChaos.Core.Enums;
 
 namespace ChaosExecuter.Trigger
 {
@@ -19,8 +20,8 @@ namespace ChaosExecuter.Trigger
     {
         // TODO will be adding the CRON expression from the config.
         /// <summary>Every 5 mints </summary>
-       // [FunctionName("TimelyTrigger")]
-        public static async Task Run([TimerTrigger("0 */15 * * * *")]TimerInfo myTimer, [OrchestrationClient]
+        [FunctionName("TimelyTrigger")]
+        public static async Task Run([TimerTrigger("0 */2 * * * *")]TimerInfo myTimer, [OrchestrationClient]
         DurableOrchestrationClient starter, TraceWriter log)
         {
             log.Info($"Timely trigger function execution started: {DateTime.UtcNow}");
@@ -49,7 +50,7 @@ namespace ChaosExecuter.Trigger
         /// <param name="starter">Durable Orchestration client instance, to start the executer function</param>
         /// <param name="log">Trace writer to log the information/warning/errors.</param>
         /// <returns>The list of task, which has the instances of the executers.</returns>
-        private static List<Task> GetListOfExecuters(IEnumerable<ScheduledRules> scheduledRules, IEnumerable<EventActivity> rollbackRules, DurableOrchestrationClient starter, TraceWriter log)
+        private static List<Task> GetListOfExecuters(IEnumerable<ScheduledRules> scheduledRules, IEnumerable<ScheduledRules> rollbackRules, DurableOrchestrationClient starter, TraceWriter log)
         {
             var tasks = new List<Task>();
             foreach (var result in scheduledRules)
@@ -72,32 +73,37 @@ namespace ChaosExecuter.Trigger
                 {
                     continue;
                 }
-                InputObject triggerdata = new InputObject
-                {
-                    Action = (ActionType)Enum.Parse(typeof(ActionType), result.InitialState.Split(Delimeters.ForwardSlash)[1]),
-                    ResourceName = result.Resource,
-                    ResourceGroup = result.PartitionKey,
-                    VirtualMachineScaleSetId = result.Resource.Split(Delimeters.Underscore)[0]
-                };
+
+                var triggeredData = JsonConvert.DeserializeObject<InputObject>(result.TriggerData);
+                triggeredData.Action = VirtualMachineHelper.GetAction(result.FinalState);
                 var functionName = Mappings.FunctionNameMap[partitionKey];
                 log.Info($"Timely trigger: invoking function: {functionName}");
-                tasks.Add(starter.StartNewAsync(functionName, JsonConvert.SerializeObject(triggerdata)));
+                tasks.Add(starter.StartNewAsync(functionName, JsonConvert.SerializeObject(triggeredData)));
             }
+
             return tasks;
         }
 
-        private static IEnumerable<EventActivity> GetScheduledRulesForRollback(TraceWriter log)
+        private static IEnumerable<ScheduledRules> GetScheduledRulesForRollback(TraceWriter log)
         {
             try
             {
                 var azureSettings = new AzureClient().AzureSettings;
-                var dateFilterByUtc = TableQuery.GenerateFilterConditionForDate("EventCompletedDate", QueryComparisons.LessThanOrEqual,
+                var dateFilterByUtc = TableQuery.GenerateFilterConditionForDate("EventCompletedDate",
+                    QueryComparisons.LessThanOrEqual,
                     DateTimeOffset.UtcNow.AddMinutes(-azureSettings.Chaos.RollbackRunFrequency));
-                var dateFilterByFrequency = TableQuery.GenerateFilterConditionForDate("EventCompletedDate", QueryComparisons.GreaterThanOrEqual,
+                var dateFilterByFrequency = TableQuery.GenerateFilterConditionForDate("EventCompletedDate",
+                    QueryComparisons.GreaterThanOrEqual,
                     DateTimeOffset.UtcNow.AddMinutes(-azureSettings.Chaos.RollbackRunFrequency - azureSettings.Chaos.TriggerFrequency));
+                var statusFilter =
+                    TableQuery.GenerateFilterCondition("ExecutionStatus",
+                        QueryComparisons.Equal,
+                        Status.Completed.ToString());
 
                 var filter = TableQuery.CombineFilters(dateFilterByUtc, TableOperators.And, dateFilterByFrequency);
-                var scheduledQuery = new TableQuery<EventActivity>().Where(filter);
+                var scheduledQuery = new TableQuery<ScheduledRules>().Where(TableQuery.CombineFilters(filter,
+                    TableOperators.And,
+                    statusFilter));
 
                 return StorageAccountProvider.GetEntities(scheduledQuery, StorageTableNames.ScheduledRulesTableName);
             }

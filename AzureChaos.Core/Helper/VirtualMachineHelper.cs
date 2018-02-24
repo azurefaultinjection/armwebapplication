@@ -25,14 +25,21 @@ namespace AzureChaos.Core.Helper
                 ResourceGroupName = virtualMachine.ResourceGroupName,
                 ResourceName = virtualMachine.Name,
                 AvailabilitySetId = virtualMachine.AvailabilitySetId,
-                UpdateDomain = virtualMachine.InstanceView?.PlatformUpdateDomain,
-                FaultDomain = virtualMachine.InstanceView?.PlatformFaultDomain,
                 ResourceType = virtualMachine.Type,
                 AvailabilityZone = virtualMachine.AvailabilityZones.Count > 0 ?
                     int.Parse(virtualMachine.AvailabilityZones.FirstOrDefault().Value) : 0,
                 VirtualMachineGroup = string.IsNullOrWhiteSpace(vmGroup) ? VirtualMachineGroup.VirtualMachines.ToString() : vmGroup,
                 State = virtualMachine.PowerState.Value
             };
+
+            if (virtualMachine.InstanceView?.PlatformUpdateDomain > 0)
+            {
+                virtualMachineCrawlerResponseEntity.UpdateDomain = virtualMachine.InstanceView.PlatformUpdateDomain;
+            }
+            if (virtualMachine.InstanceView?.PlatformFaultDomain > 0)
+            {
+                virtualMachineCrawlerResponseEntity.FaultDomain = virtualMachine.InstanceView.PlatformFaultDomain;
+            }
 
             return virtualMachineCrawlerResponseEntity;
         }
@@ -56,7 +63,7 @@ namespace AzureChaos.Core.Helper
                 ResourceName = scaleSetVirtualMachines.Name,
                 ResourceType = scaleSetVirtualMachines.Type,
                 VirtualMachineScaleSetId = virtualMachineScaleSetId,
-                AvailabilityZone = availabilityZone != 0 ? availabilityZone : null,
+                AvailabilityZone = availabilityZone != 0 ? availabilityZone : 0,
                 VirtualMachineGroup = string.IsNullOrWhiteSpace(vmGroup) ? VirtualMachineGroup.VirtualMachines.ToString() : vmGroup,
                 State = scaleSetVirtualMachines.PowerState.Value
             };

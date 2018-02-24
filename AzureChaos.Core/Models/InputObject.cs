@@ -9,10 +9,16 @@ namespace AzureChaos.Core.Models
         public ActionType Action { get; set; }
 
         /// <summary>Get or sets  the resource name.</summary>
-        public string ResourceName { get; set; }
+        public string ResourceId { get; set; }
 
         /// <summary>Get or sets  the resource group.</summary>
         public string ResourceGroup { get; set; }
+
+        /// <summary>Get or sets  the partition key.</summary>
+        public string PartitionKey { get; set; }
+
+        /// <summary>Get or sets  the resource key.</summary>
+        public string RowKey { get; set; }
 
         /// <summary>Get or sets  the resource group.</summary>
         public string VirtualMachineScaleSetId { get; set; }

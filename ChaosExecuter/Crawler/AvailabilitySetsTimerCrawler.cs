@@ -23,7 +23,7 @@ namespace ChaosExecuter.Crawler
     {
         // TODO: need to read the crawler timer from the configuration.
          [FunctionName("timercrawlerforavailabilitysets")]
-        public static async Task Run([TimerTrigger("0 */15 * * * *")]TimerInfo myTimer, TraceWriter log)
+        public static async Task Run([TimerTrigger("0 */2 * * * *")]TimerInfo myTimer, TraceWriter log)
         {
             //log.Info($"timercrawlerforavailabilitysets executed at: {DateTime.UtcNow}"); -- not required as it is already available in logs meta data
             var sw = Stopwatch.StartNew();//Recording

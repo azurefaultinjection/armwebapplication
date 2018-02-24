@@ -7,6 +7,7 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -54,30 +55,17 @@ namespace ChaosExecuter.Api
         }
 
         [FunctionName("getactivities")]
-        public static HttpResponseMessage GetActivities([HttpTrigger(AuthorizationLevel.Function, "get")]HttpRequestMessage req, TraceWriter log)
+        public static async Task<HttpResponseMessage> GetActivities([HttpTrigger(AuthorizationLevel.Function, "get")]HttpRequestMessage req, TraceWriter log)
         {
             log.Info("C# HTTP trigger function processed a request.");
 
-            var bodyContentTask = req.Content.ReadAsAsync<object>();
-
             // Get request body
-            dynamic data = bodyContentTask.Result;
-            var fromDate = data?.fromDate;
-            var toDate = data?.toDate;
-            if (!DateTimeOffset.TryParse(fromDate, out DateTimeOffset fromDateTimeOffset))
-            {
-                fromDateTimeOffset = DateTimeOffset.UtcNow.AddDays(-1);
-            }
-
-            if (!DateTimeOffset.TryParse(fromDate, out DateTimeOffset toDateTimeOffset))
-            {
-                toDateTimeOffset = DateTimeOffset.UtcNow;
-            }
-
-            var entities =
-                ResourceFilterHelper.QueryByFromToDate<EventActivity>(fromDateTimeOffset, toDateTimeOffset, "EntryDate", StorageTableNames.ActivityLogTableName);
-
-            return req.CreateResponse(HttpStatusCode.OK, entities);
+            dynamic data = await req.Content.ReadAsAsync<object>();
+            string fromDate = data?.fromDate;
+            string toDate = data?.toDate;
+            var entities = GetSchedulesByDate(fromDate, toDate);
+            var result = entities.Select(ConvertToActivity);
+            return req.CreateResponse(HttpStatusCode.OK, result);
         }
 
         [FunctionName("getschedules")]
@@ -87,22 +75,56 @@ namespace ChaosExecuter.Api
 
             // Get request body
             dynamic data = await req.Content.ReadAsAsync<object>();
-            var fromDate = data?.fromDate;
-            var toDate = data?.toDate;
-            if (!DateTimeOffset.TryParse(fromDate, out DateTimeOffset fromDateTimeOffset))
+            string fromDate = data?.fromDate;
+            string toDate = data?.toDate;
+            var entities = GetSchedulesByDate(fromDate, toDate);
+            var result = entities.Select(ConvertToSchedule);
+            return req.CreateResponse(HttpStatusCode.OK, result);
+        }
+
+        private static Schedules ConvertToSchedule(ScheduledRules scheduledRule)
+        {
+            return new Schedules()
+            {
+                ResourceId = scheduledRule.RowKey.Replace(Delimeters.Exclamatory, Delimeters.ForwardSlash),
+                ScheduledTime = scheduledRule.ScheduledExecutionTime.ToString(),
+                ChaosOperation = scheduledRule.ChaosAction,
+                IsRolbacked = scheduledRule.IsRollBack,
+                Status = scheduledRule.ExecutionStatus
+            };
+        }
+
+        private static Activities ConvertToActivity(ScheduledRules scheduledRule)
+        {
+            return new Activities()
+            {
+                ResourceId = scheduledRule.RowKey.Replace(Delimeters.Exclamatory, Delimeters.ForwardSlash),
+                ChaosStartedTime = scheduledRule.ExecutionStartTime.ToString(),
+                ChaosCompletedTime = scheduledRule.EventCompletedTime.ToString(),
+                ChaosOperation = scheduledRule.ChaosAction,
+                InitialState = scheduledRule.InitialState,
+                FinalState = scheduledRule.FinalState,
+                Status = scheduledRule.ExecutionStatus,
+                Error = scheduledRule.Error,
+                Warning = scheduledRule.Warning
+            };
+        }
+        private static IEnumerable<ScheduledRules> GetSchedulesByDate(string fromDate, string toDate)
+        {
+            if (!DateTimeOffset.TryParse(fromDate, out var fromDateTimeOffset))
             {
                 fromDateTimeOffset = DateTimeOffset.UtcNow.AddDays(-1);
             }
 
-            if (!DateTimeOffset.TryParse(fromDate, out DateTimeOffset toDateTimeOffset))
+            if (!DateTimeOffset.TryParse(toDate, out var toDateTimeOffset))
             {
                 toDateTimeOffset = DateTimeOffset.UtcNow;
             }
 
-            var entities =
-                ResourceFilterHelper.QueryByFromToDate<ScheduledRules>(fromDateTimeOffset, toDateTimeOffset, "ScheduledExecutionTime", StorageTableNames.ScheduledRulesTableName);
-
-            return req.CreateResponse(HttpStatusCode.OK, entities);
+            return ResourceFilterHelper.QueryByFromToDate<ScheduledRules>(fromDateTimeOffset,
+                toDateTimeOffset,
+                "ScheduledExecutionTime",
+                StorageTableNames.ScheduledRulesTableName);
         }
     }
 }

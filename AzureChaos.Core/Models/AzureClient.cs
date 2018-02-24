@@ -6,6 +6,7 @@ using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
 using Microsoft.WindowsAzure.Storage;
 using Newtonsoft.Json;
 using System;
+using AzureChaos.Core.Enums;
 
 namespace AzureChaos.Core.Models
 {
@@ -88,6 +89,29 @@ namespace AzureChaos.Core.Models
             var blobReference = blobContainer.GetBlockBlobReference("azuresettings.json");
             var data = blobReference.DownloadText();
             return JsonConvert.DeserializeObject<AzureSettings>(data);
+        }
+
+        public bool IsChaosEnabledByGroup(string vmGroup)
+        {
+            if (!Enum.TryParse(vmGroup, out VirtualMachineGroup virtualMachineGroup))
+            {
+                return false;
+            }
+
+            var chaosEnabled = AzureSettings.Chaos.ChaosEnabled;
+            switch (virtualMachineGroup)
+            {
+                case VirtualMachineGroup.VirtualMachines:
+                    return chaosEnabled && AzureSettings.Chaos.VirtualMachineChaos.Enabled;
+                case VirtualMachineGroup.AvailabilitySets:
+                    return chaosEnabled && AzureSettings.Chaos.AvailabilitySetChaos.Enabled;
+                case VirtualMachineGroup.AvailabilityZones:
+                    return chaosEnabled && AzureSettings.Chaos.AvailabilityZoneChaos.Enabled;
+                case VirtualMachineGroup.VirtualMachineScaleSets:
+                    return chaosEnabled && AzureSettings.Chaos.ScaleSetChaos.Enabled;
+            }
+
+            return false;
         }
     }
 }

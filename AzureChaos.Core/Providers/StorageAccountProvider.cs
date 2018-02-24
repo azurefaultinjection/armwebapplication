@@ -39,7 +39,7 @@ namespace AzureChaos.Core.Providers
             return table;
         }
 
-        public static void InsertOrMerge<T>(T entity, string tableName) where T : ITableEntity
+        public static void Merge<T>(T entity, string tableName) where T : ITableEntity
         {
             var table = CreateOrGetTable(tableName);
             if (table == null)
@@ -47,7 +47,7 @@ namespace AzureChaos.Core.Providers
                 return;
             }
 
-            var tableOperation = TableOperation.InsertOrMerge(entity);
+            var tableOperation = TableOperation.Merge(entity);
             table.Execute(tableOperation);
         }
 

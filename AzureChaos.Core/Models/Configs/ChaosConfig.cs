@@ -31,29 +31,11 @@ namespace AzureChaos.Core.Models.Configs
         [JsonProperty("microsoft.chaos.crawler.frequency")]
         public int CrawlerFrequency { get; set; }
 
-        [JsonProperty("microsoft.chaos.crawler.standalonevirtualmachines.frequency")]
-        public int StandaloneVirtualMachinesCrawlerFrequency { get; set; }
-
-        [JsonProperty("microsoft.chaos.crawler.availabilityset.frequency")]
-        public int AvailabilitySetCrawlerFrequency { get; set; }
-
-        [JsonProperty("microsoft.chaos.crawler.virtualmachinescaleset.frequency")]
-        public int VirtualMachineScaleSetCrawlerFrequency { get; set; }
-
-        [JsonProperty("microsoft.chaos.crawler.resourcegroup.frequency")]
-        public int ResourceGroupCrawlerFrequency { get; set; }
-
         [JsonProperty("microsoft.chaos.startTime")]
         public string StartTime { get; set; }
 
         [JsonProperty("microsoft.chaos.endTime")]
         public string EndTime { get; set; }
-
-        [JsonProperty("microsoft.chaos.crawlerRunFrequencyInMins")]
-        public string CrawlerRunFrequency { get; set; }
-
-        [JsonProperty("microsoft.chaos.SchedulerRunFrequencyInMins")]
-        public string SchedulerRunFrequency { get; set; }
 
         [JsonProperty("microsoft.chaos.notification.global.enabled")]
         public bool NotificationEnabled { get; set; }

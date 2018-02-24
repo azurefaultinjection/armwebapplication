@@ -65,40 +65,17 @@ namespace AzureChaos.Core.Helper
                 TableOperators.And,
                 TableQuery.GenerateFilterConditionForDate("ScheduledExecutionTime",
                     QueryComparisons.GreaterThanOrEqual,
-                    DateTimeOffset.UtcNow.AddHours(-azureSettings.Chaos.SchedulerFrequency)));
-            var combineFilter = !string.IsNullOrWhiteSpace(filter)
-                ? TableQuery.CombineFilters(dateFilter,
-                    TableOperators.And,
-                    filter)
-                : dateFilter;
-            tableQuery = tableQuery.Where(combineFilter);
-            var resultsSet = StorageAccountProvider.GetEntities(tableQuery, tableName);
-            return resultsSet.ToList();
-        }
-
-        public static List<EventActivity> QueryActivitiesByMeanTime(AzureSettings azureSettings,
-            string tableName,
-            string filter = "")
-        {
-            var tableQuery = new TableQuery<EventActivity>();
-            var dateFilter = TableQuery.CombineFilters(TableQuery.GenerateFilterConditionForDate("EntryInsertionTime",
-                    QueryComparisons.LessThanOrEqual,
-                    DateTimeOffset.UtcNow),
-                TableOperators.And,
-                TableQuery.GenerateFilterConditionForDate("EntryInsertionTime",
-                    QueryComparisons.GreaterThanOrEqual,
                     DateTimeOffset.UtcNow.AddHours(-azureSettings.Chaos.MeanTime)));
             var combineFilter = !string.IsNullOrWhiteSpace(filter)
                 ? TableQuery.CombineFilters(dateFilter,
                     TableOperators.And,
                     filter)
                 : dateFilter;
-
             tableQuery = tableQuery.Where(combineFilter);
             var resultsSet = StorageAccountProvider.GetEntities(tableQuery, tableName);
             return resultsSet.ToList();
         }
-
+        
         public static List<T> QueryByPartitionKey<T>(string partitionKey, string tableName) where T : ITableEntity, new()
         {
             var tableQuery = new TableQuery<T>();
