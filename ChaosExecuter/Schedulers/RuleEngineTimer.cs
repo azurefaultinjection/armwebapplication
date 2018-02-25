@@ -12,8 +12,9 @@ namespace ChaosExecuter.Schedulers
     public static class RuleEngineTimer
     {
         [FunctionName("RuleEngineTimer")]
-        public static void Run([TimerTrigger("0 */5 * * * *")]TimerInfo myTimer, TraceWriter log)
+        public static void Run([TimerTrigger("0 */15 * * * *")]TimerInfo myTimer, TraceWriter log)
         {
+
             log.Info("C# RuleEngine: trigger function started processing the request.");
             var azureClient = new AzureClient();
             if (azureClient.AzureSettings?.Chaos == null || !azureClient.AzureSettings.Chaos.ChaosEnabled)

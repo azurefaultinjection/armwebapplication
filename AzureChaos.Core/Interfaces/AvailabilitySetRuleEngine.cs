@@ -39,7 +39,7 @@ namespace AzureChaos.Core.Interfaces
                 }
 
                 var randomAvailabilitySetDomainCombination = availableSetDomainOptionsList[random.Next(0, availableSetDomainOptionsList.Count - 1)];
-                var componentsInAvailabilitySetDomainCombination = randomAvailabilitySetDomainCombination.Split('@');
+                var componentsInAvailabilitySetDomainCombination = randomAvailabilitySetDomainCombination.Split(Delimeters.At);
                 if (!componentsInAvailabilitySetDomainCombination.Any())
                 {
                     return;
@@ -58,7 +58,7 @@ namespace AzureChaos.Core.Interfaces
 
         private void InsertVirtualMachineAvailabilitySetDomainResults(string availabilitySetId, int domainNumber)
         {
-            var virtualMachineQuery = TableQuery.CombineFilters(TableQuery.GenerateFilterCondition("AvailableSetId",
+            var virtualMachineQuery = TableQuery.CombineFilters(TableQuery.GenerateFilterCondition("AvailabilitySetId",
                     QueryComparisons.Equal,
                     availabilitySetId),
                 TableOperators.And,
@@ -94,7 +94,7 @@ namespace AzureChaos.Core.Interfaces
         {
             var recentlyExecutedAvailabilitySetDomainCombination = new List<string>();
             var possibleAvailabilitySetDomainCombinationVmCount = new Dictionary<string, int>();
-            var meanTimeQuery = TableQuery.GenerateFilterConditionForDate("scheduledExecutionTime",
+            var meanTimeQuery = TableQuery.GenerateFilterConditionForDate("ScheduledExecutionTime",
                 QueryComparisons.GreaterThanOrEqual,
                 DateTimeOffset.UtcNow.AddMinutes(-_azureClient.AzureSettings.Chaos.SchedulerFrequency));
 
@@ -116,7 +116,7 @@ namespace AzureChaos.Core.Interfaces
             {
                 if (_azureClient.AzureSettings.Chaos.AvailabilitySetChaos.FaultDomainEnabled)
                 {
-                    if (!eachExecutedAvilabilitySetCombinationResults.CombinationKey.Contains("!")) continue;
+                    if (!eachExecutedAvilabilitySetCombinationResults.CombinationKey.Contains(Delimeters.Exclamatory.ToString())) continue;
 
                     if (possibleAvailabilitySetDomainCombinationVmCount.ContainsKey(eachExecutedAvilabilitySetCombinationResults.CombinationKey))
                     {
@@ -129,7 +129,7 @@ namespace AzureChaos.Core.Interfaces
                 }
                 else
                 {
-                    if (!eachExecutedAvilabilitySetCombinationResults.CombinationKey.Contains("@")) continue;
+                    if (!eachExecutedAvilabilitySetCombinationResults.CombinationKey.Contains(Delimeters.Exclamatory.ToString())) continue;
 
                     if (possibleAvailabilitySetDomainCombinationVmCount.ContainsKey(eachExecutedAvilabilitySetCombinationResults.CombinationKey))
                     {

@@ -65,7 +65,7 @@ namespace AzureChaos.Core.Helper
                 ScheduledExecutionTime = executionTime,
                 TriggerData = GetTriggerData(entity, action),
                 SchedulerSessionId = sessionId,
-                CombinationKey = entity.RegionName + "!" + entity.AvailabilityZone
+                CombinationKey = entity.RegionName + Delimeters.Exclamatory.ToString() + entity.AvailabilityZone
             };
         }
 
@@ -87,7 +87,7 @@ namespace AzureChaos.Core.Helper
         {
             var enabledChaos = Mappings.GetEnabledChaos(azureSettings);
 
-            var selectionQuery = TableQuery.GenerateFilterConditionForDate("scheduledExecutionTime", QueryComparisons.GreaterThanOrEqual,
+            var selectionQuery = TableQuery.GenerateFilterConditionForDate("ScheduledExecutionTime", QueryComparisons.GreaterThanOrEqual,
                 DateTimeOffset.UtcNow.AddMinutes(-azureSettings.Chaos.SchedulerFrequency));
             var scheduledQuery = new TableQuery<ScheduledRules>().Where(selectionQuery);
             var executedResults = StorageAccountProvider.GetEntities(scheduledQuery, StorageTableNames.ScheduledRulesTableName);

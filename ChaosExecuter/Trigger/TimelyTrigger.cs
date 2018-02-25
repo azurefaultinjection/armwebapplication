@@ -29,7 +29,7 @@ namespace ChaosExecuter.Trigger
             {
                 var scheduledRules = GetScheduledRulesForExecution(log);
                 var rollbackRules = GetScheduledRulesForRollback(log);
-                if (scheduledRules == null)
+                if (scheduledRules == null && rollbackRules == null)
                 {
                     log.Info($"Timely trigger no entries to trigger");
                     return;
@@ -121,10 +121,10 @@ namespace ChaosExecuter.Trigger
             try
             {
                 var azureSettings = new AzureClient().AzureSettings;
-                var dateFilterByUtc = TableQuery.GenerateFilterConditionForDate("scheduledExecutionTime", QueryComparisons.GreaterThanOrEqual,
+                var dateFilterByUtc = TableQuery.GenerateFilterConditionForDate("ScheduledExecutionTime", QueryComparisons.GreaterThanOrEqual,
                     DateTimeOffset.UtcNow);
 
-                var dateFilterByFrequency = TableQuery.GenerateFilterConditionForDate("scheduledExecutionTime", QueryComparisons.LessThanOrEqual,
+                var dateFilterByFrequency = TableQuery.GenerateFilterConditionForDate("ScheduledExecutionTime", QueryComparisons.LessThanOrEqual,
                     DateTimeOffset.UtcNow.AddMinutes(azureSettings.Chaos.TriggerFrequency));
 
                 var filter = TableQuery.CombineFilters(dateFilterByUtc, TableOperators.And, dateFilterByFrequency);

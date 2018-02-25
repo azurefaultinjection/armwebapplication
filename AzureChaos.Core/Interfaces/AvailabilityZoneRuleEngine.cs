@@ -34,7 +34,7 @@ namespace AzureChaos.Core.Interfaces
 
                 var random = new Random();
                 var randomAvailabilityZoneRegion = avilabilityZoneRegionCombinationsList[random.Next(0, avilabilityZoneRegionCombinationsList.Count - 1)];
-                var componentsInRandomAvailabilityZoneRegion = randomAvailabilityZoneRegion.Split('!');
+                var componentsInRandomAvailabilityZoneRegion = randomAvailabilityZoneRegion.Split(Delimeters.Exclamatory);
                 var availabilityZone = int.Parse(componentsInRandomAvailabilityZoneRegion.Last());
                 var region = componentsInRandomAvailabilityZoneRegion.First();
                 InsertVirtualMachineAvailabilityZoneRegionResults(region, availabilityZone);
@@ -77,7 +77,7 @@ namespace AzureChaos.Core.Interfaces
         {
             var recentlyExecutedAvailabilityZoneRegionCombination = new List<string>();
             var possibleAvailabilityZoneRegionCombinationVmCount = new Dictionary<string, int>();
-            var meanTimeQuery = TableQuery.GenerateFilterConditionForDate("scheduledExecutionTime",
+            var meanTimeQuery = TableQuery.GenerateFilterConditionForDate("ScheduledExecutionTime",
                 QueryComparisons.GreaterThanOrEqual,
                 DateTimeOffset.UtcNow.AddMinutes(-azureClient.AzureSettings.Chaos.SchedulerFrequency));
 
