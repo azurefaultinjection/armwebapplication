@@ -11,6 +11,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.Management.Compute.Fluent;
+using Microsoft.WindowsAzure.Storage.Table.Protocol;
 
 namespace AzureChaos.Core.Interfaces
 {
@@ -42,12 +43,20 @@ namespace AzureChaos.Core.Interfaces
                 {
                     var randomSets = vmSets.Take(count).ToList();
                     vmSets = vmSets.Except(randomSets).ToList();
-                    var batchOperation = VirtualMachineHelper.CreateScheduleEntity(randomSets,
-                        azureClient.AzureSettings.Chaos.SchedulerFrequency,
-                        VirtualMachineGroup.VirtualMachines);
-                    if (batchOperation == null) continue;
+                    for (var i = 0;
+                        i < randomSets.Count;
+                        i += TableConstants.TableServiceBatchMaximumOperations)
+                    {
+                        var batchItems = randomSets.Skip(i)
+                            .Take(TableConstants.TableServiceBatchMaximumOperations).ToList();
 
-                    tasks.Add(table.ExecuteBatchAsync(batchOperation));
+                        var batchOperation = VirtualMachineHelper.CreateScheduleEntity(batchItems,
+                            azureClient.AzureSettings.Chaos.SchedulerFrequency,
+                            VirtualMachineGroup.VirtualMachines);
+                        if (batchOperation == null) continue;
+
+                        tasks.Add(table.ExecuteBatchAsync(batchOperation));
+                    }
                 } while (vmSets.Any());
 
                 Task.WhenAll(tasks);

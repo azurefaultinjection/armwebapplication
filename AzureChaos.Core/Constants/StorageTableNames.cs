@@ -10,7 +10,6 @@
         public const string AvailabilitySetCrawlerTableName = "tblchaosavailabilityset";
         public const string VirtualMachinesScaleSetCrawlerTableName = "tblchaosscalesets";
         public const string AvailabilityZoneCrawlerTableName = "tblchaosavailabilityzone";
-        public const string ActivityLogTableName = "tblchaosactivitylog";
         public const string ScheduledRulesTableName = "tblchaosscheduledrules";
     }
 }

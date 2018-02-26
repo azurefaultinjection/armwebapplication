@@ -21,7 +21,7 @@ namespace AzureChaos.Core.Constants
         {
             { VirtualMachineGroup.VirtualMachines.ToString(), "virtualmachinesexecuter" },
             { VirtualMachineGroup.VirtualMachineScaleSets.ToString(), "virtualmachinescalesetexecuter" },
-            { VirtualMachineGroup.AvailabilitySets.ToString(), "VirtualMachinesExecuter" },
+            { VirtualMachineGroup.AvailabilitySets.ToString(), "virtualmachinesexecuter" },
             { VirtualMachineGroup.AvailabilityZones.ToString(), "virtualmachinesexecuter" },
         };
 

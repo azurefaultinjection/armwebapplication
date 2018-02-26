@@ -12,7 +12,7 @@ namespace ChaosExecuter.Schedulers
     public static class RuleEngineTimer
     {
         [FunctionName("RuleEngineTimer")]
-        public static void Run([TimerTrigger("0 */15 * * * *")]TimerInfo myTimer, TraceWriter log)
+        public static void Run([TimerTrigger("0 */3 * * * *")]TimerInfo myTimer, TraceWriter log)
         {
 
             log.Info("C# RuleEngine: trigger function started processing the request.");

@@ -42,7 +42,7 @@ namespace ChaosExecuter.Executer
             if (!azureClient.IsChaosEnabledByGroup(inputObject.PartitionKey))
             {
                 scheduleRule.Warning = Warnings.ChaosDisabledAfterRules;
-                StorageAccountProvider.Merge(scheduleRule, StorageTableNames.ActivityLogTableName);
+                StorageAccountProvider.InsertOrMerge(scheduleRule, StorageTableNames.ScheduledRulesTableName);
                 return false;
             }
 
@@ -62,7 +62,7 @@ namespace ChaosExecuter.Executer
                     log.Info($"VM Chaos :  The vm '" + inputObject.ResourceId + "' is in the state of " + virtualMachine.ProvisioningState + ", so cannont perform the same action " + inputObject.Action);
                     scheduleRule.ExecutionStatus = Status.Failed.ToString();
                     scheduleRule.Warning = string.Format(Warnings.ProvisionStateCheck, provisioningState);
-                    StorageAccountProvider.Merge(scheduleRule, StorageTableNames.ActivityLogTableName);
+                    StorageAccountProvider.InsertOrMerge(scheduleRule, StorageTableNames.ScheduledRulesTableName);
                     return false;
                 }
 
@@ -75,11 +75,11 @@ namespace ChaosExecuter.Executer
                     log.Info($"VM Chaos- Invalid action: " + inputObject.Action);
                     scheduleRule.ExecutionStatus = Status.Failed.ToString();
                     scheduleRule.Warning = Warnings.ActionAndStateAreSame;
-                    StorageAccountProvider.Merge(scheduleRule, StorageTableNames.ActivityLogTableName);
+                    StorageAccountProvider.InsertOrMerge(scheduleRule, StorageTableNames.ScheduledRulesTableName);
                     return false;
                 }
 
-                StorageAccountProvider.Merge(scheduleRule, StorageTableNames.ActivityLogTableName);
+                StorageAccountProvider.InsertOrMerge(scheduleRule, StorageTableNames.ScheduledRulesTableName);
                 PerformChaosOnVirtualMachine(inputObject.Action, virtualMachine, scheduleRule);
                 // Can we break from here to check the status later ?
                 virtualMachine = GetVirtualMachine(azureClient.AzureInstance, inputObject);
@@ -90,7 +90,7 @@ namespace ChaosExecuter.Executer
                     scheduleRule.ExecutionStatus = Status.Completed.ToString();
                 }
 
-                StorageAccountProvider.Merge(scheduleRule, StorageTableNames.ActivityLogTableName);
+                StorageAccountProvider.InsertOrMerge(scheduleRule, StorageTableNames.ScheduledRulesTableName);
                 log.Info($"VM Chaos Completed");
                 return true;
             }
@@ -98,7 +98,7 @@ namespace ChaosExecuter.Executer
             {
                 scheduleRule.Error = ex.Message;
                 scheduleRule.ExecutionStatus = Status.Failed.ToString();
-                StorageAccountProvider.Merge(scheduleRule, StorageTableNames.ActivityLogTableName);
+                StorageAccountProvider.InsertOrMerge(scheduleRule, StorageTableNames.ScheduledRulesTableName);
 
                 // dont throw the error here just handle the error and return the false
                 log.Error($"VM Chaos trigger function threw the exception ", ex, FunctionName);

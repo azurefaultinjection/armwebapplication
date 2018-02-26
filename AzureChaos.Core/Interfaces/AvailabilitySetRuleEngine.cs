@@ -9,6 +9,9 @@ using Microsoft.WindowsAzure.Storage.Table;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
+using System.Threading.Tasks;
+using Microsoft.WindowsAzure.Storage.Table.Protocol;
 
 namespace AzureChaos.Core.Interfaces
 {
@@ -45,7 +48,12 @@ namespace AzureChaos.Core.Interfaces
                     return;
                 }
 
-                var domainNumber = int.Parse(componentsInAvailabilitySetDomainCombination.Last());
+                var domainId = componentsInAvailabilitySetDomainCombination.Last();
+                if (string.IsNullOrWhiteSpace(domainId))
+                {
+                    return;
+                }
+                var domainNumber = int.Parse(domainId);
                 var availabilitySetId = componentsInAvailabilitySetDomainCombination.First();
                 InsertVirtualMachineAvailabilitySetDomainResults(availabilitySetId, domainNumber);
                 log.Error("Availability RuleEngine: Completed creating rule engine");
@@ -72,7 +80,8 @@ namespace AzureChaos.Core.Interfaces
 
             //TableQuery.GenerateFilterConditionForInt("AvailabilityZone", QueryComparisons.GreaterThanOrEqual, 0);
             var virtualMachinesTableQuery = new TableQuery<VirtualMachineCrawlerResponse>().Where(virtualMachineQuery);
-            var crawledVirtualMachinesResults = StorageAccountProvider.GetEntities(virtualMachinesTableQuery, StorageTableNames.VirtualMachineCrawlerTableName);
+            var crawledVirtualMachinesResults = StorageAccountProvider.GetEntities(virtualMachinesTableQuery,
+                StorageTableNames.VirtualMachineCrawlerTableName);
             var virtualMachinesResults = crawledVirtualMachinesResults.ToList();
             if (!virtualMachinesResults.Any())
             {
@@ -80,14 +89,27 @@ namespace AzureChaos.Core.Interfaces
             }
 
             var domainFlag = !_azureClient.AzureSettings.Chaos.AvailabilitySetChaos.UpdateDomainEnabled;
-            var scheduledRulesbatchOperation = VirtualMachineHelper.CreateScheduleEntityForAvailabilitySet(virtualMachinesResults, _azureClient.AzureSettings.Chaos.SchedulerFrequency, domainFlag);
-            if (scheduledRulesbatchOperation.Count <= 0)
+            var batchTasks = new List<Task>();
+            var table = StorageAccountProvider.CreateOrGetTable(StorageTableNames.ScheduledRulesTableName);
+            for (var i = 0; i < virtualMachinesResults.Count; i += TableConstants.TableServiceBatchMaximumOperations)
             {
-                return;
+                var batchItems = virtualMachinesResults.Skip(i)
+                    .Take(TableConstants.TableServiceBatchMaximumOperations).ToList();
+                var scheduledRulesbatchOperation =
+                    VirtualMachineHelper.CreateScheduleEntityForAvailabilitySet(batchItems,
+                        _azureClient.AzureSettings.Chaos.SchedulerFrequency, domainFlag);
+                if (scheduledRulesbatchOperation.Count <= 0)
+                {
+                    return;
+                }
+                
+                batchTasks.Add(table.ExecuteBatchAsync(scheduledRulesbatchOperation));
             }
 
-            var table = StorageAccountProvider.CreateOrGetTable(StorageTableNames.ScheduledRulesTableName);
-            table.ExecuteBatch(scheduledRulesbatchOperation);
+            if (batchTasks.Count > 0)
+            {
+                Task.WhenAll(batchTasks);
+            }
         }
 
         private IEnumerable<string> GetRecentlyExecutedAvailabilitySetDomainCombination()

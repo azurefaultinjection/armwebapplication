@@ -16,9 +16,9 @@ namespace ChaosExecuter.Executer
 {
     public static class VirtualMachineScaleSetVmExecuter
     {
-        private const string FunctionName = "scalesetvmexecuter";
+        private const string FunctionName = "virtualmachinescalesetexecuter";
 
-        [FunctionName("scalesetvmexecuter")]
+        [FunctionName("virtualmachinescalesetexecuter")]
         public static async Task<bool> Run([OrchestrationTrigger] DurableOrchestrationContext context, TraceWriter log)
         {
             var input = context.GetInput<string>();
@@ -53,12 +53,12 @@ namespace ChaosExecuter.Executer
                     log.Info($"VM ScaleSet- Invalid action: " + inputObject.Action);
                     scheduleRule.ExecutionStatus = Status.Failed.ToString();
                     scheduleRule.Warning = Warnings.ActionAndStateAreSame;
-                    StorageAccountProvider.Merge(scheduleRule, StorageTableNames.ActivityLogTableName);
+                    StorageAccountProvider.InsertOrMerge(scheduleRule, StorageTableNames.ScheduledRulesTableName);
                     return false;
                 }
 
                 scheduleRule.ExecutionStatus = Status.Started.ToString();
-                StorageAccountProvider.Merge(scheduleRule, StorageTableNames.ActivityLogTableName);
+                StorageAccountProvider.InsertOrMerge(scheduleRule, StorageTableNames.ScheduledRulesTableName);
                 await PerformChaos(inputObject.Action, scaleSetVm, scheduleRule);
                 scaleSetVm = await scaleSetVm.RefreshAsync();
                 if (scaleSetVm != null)
@@ -68,7 +68,7 @@ namespace ChaosExecuter.Executer
                     scheduleRule.ExecutionStatus = Status.Completed.ToString();
                 }
 
-                StorageAccountProvider.Merge(scheduleRule, StorageTableNames.ActivityLogTableName);
+                StorageAccountProvider.InsertOrMerge(scheduleRule, StorageTableNames.ScheduledRulesTableName);
                 log.Info($"VM ScaleSet Chaos Completed");
                 return true;
             }
@@ -76,7 +76,7 @@ namespace ChaosExecuter.Executer
             {
                 scheduleRule.Error = ex.Message;
                 scheduleRule.ExecutionStatus = Status.Failed.ToString();
-                StorageAccountProvider.Merge(scheduleRule, StorageTableNames.ActivityLogTableName);
+                StorageAccountProvider.InsertOrMerge(scheduleRule, StorageTableNames.ScheduledRulesTableName);
 
                 // dont throw the error here just handle the error and return the false
                 log.Error($"VM ScaleSet Chaos trigger function threw the exception ", ex, FunctionName);

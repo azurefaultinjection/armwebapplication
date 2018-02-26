@@ -10,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.WindowsAzure.Storage.Table.Protocol;
 
 namespace AzureChaos.Core.Interfaces
 {
@@ -48,12 +49,19 @@ namespace AzureChaos.Core.Interfaces
                 {
                     var randomSets = filteredVmSet.Take(count).ToList();
                     filteredVmSet = filteredVmSet.Except(randomSets).ToList();
-                    var batchOperation = VirtualMachineHelper.CreateScheduleEntity(randomSets,
-                        azureClient.AzureSettings.Chaos.SchedulerFrequency,
-                        VirtualMachineGroup.VirtualMachineScaleSets);
+                    for (var i = 0;
+                        i < randomSets.Count;
+                        i += TableConstants.TableServiceBatchMaximumOperations)
+                    {
+                        var batchItems = randomSets.Skip(i)
+                            .Take(TableConstants.TableServiceBatchMaximumOperations).ToList();
+                        var batchOperation = VirtualMachineHelper.CreateScheduleEntity(batchItems,
+                            azureClient.AzureSettings.Chaos.SchedulerFrequency,
+                            VirtualMachineGroup.VirtualMachineScaleSets);
 
-                    var operation = batchOperation;
-                    tasks.Add(table.ExecuteBatchAsync(operation));
+                        var operation = batchOperation;
+                        tasks.Add(table.ExecuteBatchAsync(operation));
+                    }
                 } while (filteredVmSet.Any());
 
                 Task.WhenAll(tasks);

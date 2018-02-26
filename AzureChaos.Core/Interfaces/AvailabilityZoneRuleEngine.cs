@@ -9,6 +9,8 @@ using Microsoft.WindowsAzure.Storage.Table;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.WindowsAzure.Storage.Table.Protocol;
 
 namespace AzureChaos.Core.Interfaces
 {
@@ -64,13 +66,25 @@ namespace AzureChaos.Core.Interfaces
 
             var virtualMachinesResults = crawledVirtualMachinesResults.ToList();
             if (!virtualMachinesResults.Any()) return;
-            var scheduledRulesbatchOperation = VirtualMachineHelper.CreateScheduleEntityForAvailabilityZone(
-                virtualMachinesResults,
-                azureClient.AzureSettings.Chaos.SchedulerFrequency);
-
-            if (scheduledRulesbatchOperation.Count <= 0) return;
+            var batchTasks = new List<Task>();
             var table = StorageAccountProvider.CreateOrGetTable(StorageTableNames.ScheduledRulesTableName);
-            table.ExecuteBatch(scheduledRulesbatchOperation);
+            for (var i = 0; i < virtualMachinesResults.Count; i += TableConstants.TableServiceBatchMaximumOperations)
+            {
+                var batchItems = virtualMachinesResults.Skip(i)
+                    .Take(TableConstants.TableServiceBatchMaximumOperations).ToList();
+                var scheduledRulesbatchOperation = VirtualMachineHelper
+                    .CreateScheduleEntityForAvailabilityZone(
+                        batchItems,
+                    azureClient.AzureSettings.Chaos.SchedulerFrequency);
+
+                if (scheduledRulesbatchOperation.Count <= 0) return;
+                batchTasks.Add(table.ExecuteBatchAsync(scheduledRulesbatchOperation));
+            }
+
+            if (batchTasks.Count > 0)
+            {
+                Task.WhenAll(batchTasks);
+            }
         }
 
         private IEnumerable<string> GetRecentlyExecutedAvailabilityZoneRegionCombination()

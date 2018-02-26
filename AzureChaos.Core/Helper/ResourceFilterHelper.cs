@@ -37,13 +37,13 @@ namespace AzureChaos.Core.Helper
             string filter = "") where T : CrawlerResponse, new()
         {
             var tableQuery = new TableQuery<T>();
-            var dateFilter = TableQuery.CombineFilters(TableQuery.GenerateFilterConditionForDate("TimeStamp",
+            var dateFilter = TableQuery.CombineFilters(TableQuery.GenerateFilterConditionForDate("Timestamp",
                     QueryComparisons.LessThanOrEqual,
                     DateTimeOffset.UtcNow),
                 TableOperators.And,
-                TableQuery.GenerateFilterConditionForDate("TimeStamp",
+                TableQuery.GenerateFilterConditionForDate("Timestamp",
                     QueryComparisons.GreaterThanOrEqual,
-                    DateTimeOffset.UtcNow.AddHours(-azureSettings.Chaos.CrawlerFrequency)));
+                    DateTimeOffset.UtcNow.AddMinutes(-azureSettings.Chaos.CrawlerFrequency)));
             var combineFilter = !string.IsNullOrWhiteSpace(filter)
                 ? TableQuery.CombineFilters(dateFilter,
                     TableOperators.And,
@@ -65,7 +65,7 @@ namespace AzureChaos.Core.Helper
                 TableOperators.And,
                 TableQuery.GenerateFilterConditionForDate("ScheduledExecutionTime",
                     QueryComparisons.GreaterThanOrEqual,
-                    DateTimeOffset.UtcNow.AddHours(-azureSettings.Chaos.MeanTime)));
+                    DateTimeOffset.UtcNow.AddMinutes(-azureSettings.Chaos.MeanTime)));
             var combineFilter = !string.IsNullOrWhiteSpace(filter)
                 ? TableQuery.CombineFilters(dateFilter,
                     TableOperators.And,
@@ -111,24 +111,6 @@ namespace AzureChaos.Core.Helper
             tableQuery = tableQuery.Where(dateFilter);
             var resultsSet = StorageAccountProvider.GetEntities(tableQuery, tableName);
             return resultsSet.ToList();
-        }
-
-        private static string GetInsertionDatetimeFilter(AzureSettings azureSettings,
-            string propertyName,
-            string combinedFilter = "")
-        {
-            var dateFilter = TableQuery.CombineFilters(TableQuery.GenerateFilterConditionForDate(propertyName,
-                    QueryComparisons.LessThanOrEqual,
-                    DateTimeOffset.UtcNow),
-                TableOperators.And,
-                TableQuery.GenerateFilterConditionForDate(propertyName,
-                    QueryComparisons.GreaterThanOrEqual,
-                    DateTimeOffset.UtcNow.AddHours(-azureSettings.Chaos.SchedulerFrequency)));
-            return !string.IsNullOrWhiteSpace(combinedFilter)
-                ? TableQuery.CombineFilters(dateFilter,
-                    TableOperators.And,
-                    combinedFilter)
-                : dateFilter;
         }
     }
 }

@@ -24,7 +24,7 @@ namespace AzureChaos.Core.Helper
             return new ScheduledRules(virtualMachineGroup.ToString(), entity.RowKey)
             {
                 ScheduledExecutionTime = executionTime,
-                TriggerData = GetTriggerData(entity, action),
+                TriggerData = GetTriggerData(entity, action, virtualMachineGroup.ToString(), entity.RowKey),
                 SchedulerSessionId = sessionId
             };
         }
@@ -47,7 +47,7 @@ namespace AzureChaos.Core.Helper
             return new ScheduledRules(VirtualMachineGroup.AvailabilitySets.ToString(), entity.RowKey)
             {
                 ScheduledExecutionTime = executionTime,
-                TriggerData = GetTriggerData(entity, action),
+                TriggerData = GetTriggerData(entity, action, VirtualMachineGroup.AvailabilitySets.ToString(), entity.RowKey),
                 SchedulerSessionId = sessionId,
                 CombinationKey = combinationKey
             };
@@ -63,18 +63,18 @@ namespace AzureChaos.Core.Helper
             return new ScheduledRules(VirtualMachineGroup.AvailabilityZones.ToString(), entity.RowKey)
             {
                 ScheduledExecutionTime = executionTime,
-                TriggerData = GetTriggerData(entity, action),
+                TriggerData = GetTriggerData(entity, action, VirtualMachineGroup.AvailabilityZones.ToString(), entity.RowKey),
                 SchedulerSessionId = sessionId,
                 CombinationKey = entity.RegionName + Delimeters.Exclamatory.ToString() + entity.AvailabilityZone
             };
         }
 
-        public static string GetTriggerData(CrawlerResponse crawlerResponse, ActionType action)
+        public static string GetTriggerData(CrawlerResponse crawlerResponse, ActionType action, string partitionKey, string rowKey)
         {
             InputObject triggerdata = new InputObject
             {
-                PartitionKey = crawlerResponse.PartitionKey,
-                RowKey =  crawlerResponse.RowKey,
+                PartitionKey = partitionKey,
+                RowKey = rowKey,
                 Action = action,
                 ResourceId = crawlerResponse.ResourceName,
                 ResourceGroup = crawlerResponse.ResourceGroupName,

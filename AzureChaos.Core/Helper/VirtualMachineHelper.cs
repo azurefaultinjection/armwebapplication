@@ -29,7 +29,7 @@ namespace AzureChaos.Core.Helper
                 AvailabilityZone = virtualMachine.AvailabilityZones.Count > 0 ?
                     int.Parse(virtualMachine.AvailabilityZones.FirstOrDefault().Value) : 0,
                 VirtualMachineGroup = string.IsNullOrWhiteSpace(vmGroup) ? VirtualMachineGroup.VirtualMachines.ToString() : vmGroup,
-                State = virtualMachine.PowerState.Value
+                State =  virtualMachine.PowerState?.Value
             };
 
             if (virtualMachine.InstanceView?.PlatformUpdateDomain > 0)
@@ -65,7 +65,7 @@ namespace AzureChaos.Core.Helper
                 VirtualMachineScaleSetId = virtualMachineScaleSetId,
                 AvailabilityZone = availabilityZone != 0 ? availabilityZone : 0,
                 VirtualMachineGroup = string.IsNullOrWhiteSpace(vmGroup) ? VirtualMachineGroup.VirtualMachines.ToString() : vmGroup,
-                State = scaleSetVirtualMachines.PowerState.Value
+                State = scaleSetVirtualMachines.PowerState?.Value
             };
 
             return virtualMachineCrawlerResponseEntity;

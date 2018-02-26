@@ -8,7 +8,9 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.WindowsAzure.Storage.Table;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.WindowsAzure.Storage.Table.Protocol;
 
 namespace ChaosExecuter.Crawler
 {
@@ -33,21 +35,29 @@ namespace ChaosExecuter.Crawler
         private static async Task InsertOrReplaceResourceGroupsAsync(List<IResourceGroup> resourceGroups, TraceWriter log)
         {
             var tableBatchOperation = new TableBatchOperation();
-            Parallel.ForEach(resourceGroups, eachResourceGroup =>
+            // table batch operation currently allows only 100 per batch, So ensuring the one batch operation will have only 100 items
+            for (var i = 0; i < resourceGroups.Count; i += TableConstants.TableServiceBatchMaximumOperations)
             {
-                var resourceGroupCrawlerResponseEntity = new ResourceGroupCrawlerResponse("", eachResourceGroup.Name);
-                try
+                var batchItems = resourceGroups.Skip(i)
+                    .Take(TableConstants.TableServiceBatchMaximumOperations).ToList();
+                foreach (var eachResourceGroup in batchItems)
                 {
-                    resourceGroupCrawlerResponseEntity.Id = eachResourceGroup.Id;
-                    resourceGroupCrawlerResponseEntity.RegionName = eachResourceGroup.RegionName;
-                    tableBatchOperation.InsertOrReplace(resourceGroupCrawlerResponseEntity);
+                    var resourceGroupCrawlerResponseEntity =
+                        new ResourceGroupCrawlerResponse("", eachResourceGroup.Name);
+                    try
+                    {
+                        resourceGroupCrawlerResponseEntity.Id = eachResourceGroup.Id;
+                        resourceGroupCrawlerResponseEntity.RegionName = eachResourceGroup.RegionName;
+                        tableBatchOperation.InsertOrReplace(resourceGroupCrawlerResponseEntity);
+                    }
+                    catch (Exception ex)
+                    {
+                        resourceGroupCrawlerResponseEntity.Error = ex.Message;
+                        log.Error($"timercrawlerresourcegroups threw exception ", ex, "timercrawlerresourcegroups");
+                    }
                 }
-                catch (Exception ex)
-                {
-                    resourceGroupCrawlerResponseEntity.Error = ex.Message;
-                    log.Error($"timercrawlerresourcegroups threw exception ", ex, "timercrawlerresourcegroups");
-                }
-            });
+            }
+
             if (tableBatchOperation.Count > 0)
             {
                 try
