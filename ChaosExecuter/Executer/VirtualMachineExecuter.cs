@@ -88,6 +88,10 @@ namespace ChaosExecuter.Executer
                     scheduleRule.EventCompletedTime = DateTime.UtcNow;
                     scheduleRule.FinalState = virtualMachine.PowerState.Value;
                     scheduleRule.ExecutionStatus = Status.Completed.ToString();
+                    if (inputObject.Rollbacked)
+                    {
+                        scheduleRule.Rollbacked = true;
+                    }
                 }
 
                 StorageAccountProvider.InsertOrMerge(scheduleRule, StorageTableNames.ScheduledRulesTableName);

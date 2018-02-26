@@ -25,7 +25,8 @@ namespace AzureChaos.Core.Helper
             {
                 ScheduledExecutionTime = executionTime,
                 TriggerData = GetTriggerData(entity, action, virtualMachineGroup.ToString(), entity.RowKey),
-                SchedulerSessionId = sessionId
+                SchedulerSessionId = sessionId,
+                Rollbacked = false
             };
         }
 
@@ -49,7 +50,8 @@ namespace AzureChaos.Core.Helper
                 ScheduledExecutionTime = executionTime,
                 TriggerData = GetTriggerData(entity, action, VirtualMachineGroup.AvailabilitySets.ToString(), entity.RowKey),
                 SchedulerSessionId = sessionId,
-                CombinationKey = combinationKey
+                CombinationKey = combinationKey,
+                Rollbacked = false
             };
         }
 
@@ -65,7 +67,8 @@ namespace AzureChaos.Core.Helper
                 ScheduledExecutionTime = executionTime,
                 TriggerData = GetTriggerData(entity, action, VirtualMachineGroup.AvailabilityZones.ToString(), entity.RowKey),
                 SchedulerSessionId = sessionId,
-                CombinationKey = entity.RegionName + Delimeters.Exclamatory.ToString() + entity.AvailabilityZone
+                CombinationKey = entity.RegionName + Delimeters.Exclamatory.ToString() + entity.AvailabilityZone,
+                Rollbacked = false
             };
         }
 

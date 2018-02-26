@@ -77,6 +77,10 @@ namespace ChaosExecuter.Trigger
 
                 var triggeredData = JsonConvert.DeserializeObject<InputObject>(result.TriggerData);
                 triggeredData.Action = VirtualMachineHelper.GetAction(result.FinalState);
+                if (!triggeredData.Rollbacked)
+                {
+                    triggeredData.Rollbacked = true;
+                }
                 var functionName = Mappings.FunctionNameMap[partitionKey];
                 log.Info($"Timely trigger: invoking function: {functionName}");
                 tasks.Add(starter.StartNewAsync(functionName, JsonConvert.SerializeObject(triggeredData)));
@@ -90,21 +94,24 @@ namespace ChaosExecuter.Trigger
             try
             {
                 var azureSettings = new AzureClient().AzureSettings;
-                var dateFilterByUtc = TableQuery.GenerateFilterConditionForDate("EventCompletedDate",
+                var dateFilterByUtc = TableQuery.GenerateFilterConditionForDate("EventCompletedTime",
                     QueryComparisons.LessThanOrEqual,
                     DateTimeOffset.UtcNow.AddMinutes(-azureSettings.Chaos.RollbackRunFrequency));
-                var dateFilterByFrequency = TableQuery.GenerateFilterConditionForDate("EventCompletedDate",
+                var dateFilterByFrequency = TableQuery.GenerateFilterConditionForDate("EventCompletedTime",
                     QueryComparisons.GreaterThanOrEqual,
                     DateTimeOffset.UtcNow.AddMinutes(-azureSettings.Chaos.RollbackRunFrequency - azureSettings.Chaos.TriggerFrequency));
                 var statusFilter =
                     TableQuery.GenerateFilterCondition("ExecutionStatus",
                         QueryComparisons.Equal,
                         Status.Completed.ToString());
+                var rollbackFilter =
+                    TableQuery.GenerateFilterConditionForBool("Rollbacked", QueryComparisons.Equal, false);
+                var rollbackStatusFilter = TableQuery.CombineFilters(statusFilter, TableOperators.And, rollbackFilter);
 
                 var filter = TableQuery.CombineFilters(dateFilterByUtc, TableOperators.And, dateFilterByFrequency);
                 var scheduledQuery = new TableQuery<ScheduledRules>().Where(TableQuery.CombineFilters(filter,
                     TableOperators.And,
-                    statusFilter));
+                    rollbackStatusFilter));
 
                 return StorageAccountProvider.GetEntities(scheduledQuery, StorageTableNames.ScheduledRulesTableName);
             }

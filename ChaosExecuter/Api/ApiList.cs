@@ -89,7 +89,7 @@ namespace ChaosExecuter.Api
                 ResourceId = scheduledRule.RowKey.Replace(Delimeters.Exclamatory, Delimeters.ForwardSlash),
                 ScheduledTime = scheduledRule.ScheduledExecutionTime.ToString(),
                 ChaosOperation = scheduledRule.ChaosAction,
-                IsRolbacked = scheduledRule.IsRollBack,
+                IsRolbacked = scheduledRule.Rollbacked,
                 Status = scheduledRule.ExecutionStatus
             };
         }
@@ -109,6 +109,7 @@ namespace ChaosExecuter.Api
                 Warning = scheduledRule.Warning
             };
         }
+
         private static IEnumerable<ScheduledRules> GetSchedulesByDate(string fromDate, string toDate)
         {
             if (!DateTimeOffset.TryParse(fromDate, out var fromDateTimeOffset))

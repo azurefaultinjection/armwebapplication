@@ -22,5 +22,8 @@ namespace AzureChaos.Core.Models
 
         /// <summary>Get or sets  the resource group.</summary>
         public string VirtualMachineScaleSetId { get; set; }
+
+        /// <summary>Get or sets  the roolback.</summary>
+        public bool Rollbacked { get; set; }
     }
 }
