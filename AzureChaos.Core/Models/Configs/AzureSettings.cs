@@ -4,7 +4,7 @@ namespace AzureChaos.Core.Models.Configs
 {
     public class AzureSettings
     {
-        [JsonProperty("ClientConfig")]
+        [JsonProperty("TargetConfig")]
         public TargetConfig Client { get; set; }
 
         [JsonProperty("ChaosConfig")]
