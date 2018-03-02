@@ -18,9 +18,10 @@ namespace ChaosExecuter.Api
     public static class ApiList
     {
         [FunctionName("getsubscriptions")]
-        public static HttpResponseMessage GetSubscriptions([HttpTrigger(AuthorizationLevel.Function, "get")]HttpRequestMessage req, TraceWriter log)
+        public static HttpResponseMessage GetSubscriptions([HttpTrigger(AuthorizationLevel.Anonymous, "get")]HttpRequestMessage req, TraceWriter log)
         {
             log.Info("C# HTTP trigger function processed a request.");
+            var origin = req.Headers.Contains("Origin") ? req.Headers.GetValues("Origin")?.FirstOrDefault() : null;
             var azureSettings = new AzureClient().AzureSettings;
             var subscriptionClient = AzureClient.GetSubscriptionClient(azureSettings.Client.ClientId,
                 azureSettings.Client.ClientSecret,
@@ -33,13 +34,21 @@ namespace ChaosExecuter.Api
             }
 
             var subscriptionList = subscriptionTask.Result.Select(x => x);
-            return req.CreateResponse(HttpStatusCode.OK, subscriptionList);
+
+            //return response;
+            var response = req.CreateResponse(HttpStatusCode.OK, subscriptionList);
+            if (req.Headers.Contains("Origin"))
+            {
+                response = AttachCrossDomainHeader(response, origin);
+            }
+            return response;
         }
 
         [FunctionName("getresourcegroups")]
         public static HttpResponseMessage GetResourceGroups([HttpTrigger(AuthorizationLevel.Function, "get")]HttpRequestMessage req, TraceWriter log)
         {
             log.Info("C# HTTP trigger function processed a request.");
+            var origin = req.Headers.Contains("Origin") ? req.Headers.GetValues("Origin")?.FirstOrDefault() : null;
             var azureSettings = new AzureClient().AzureSettings;
             var resourceManagementClient = AzureClient.GetResourceManagementClientClient(azureSettings.Client.ClientId,
                 azureSettings.Client.ClientSecret,
@@ -51,7 +60,12 @@ namespace ChaosExecuter.Api
             }
 
             var resourceGroups = resourceGroupTask.Result.Select(x => x);
-            return req.CreateResponse(HttpStatusCode.OK, resourceGroups);
+            var response = req.CreateResponse(HttpStatusCode.OK, resourceGroups);
+            if (req.Headers.Contains("Origin"))
+            {
+                response = AttachCrossDomainHeader(response, origin);
+            }
+            return response;
         }
 
         [FunctionName("getactivities")]
@@ -126,6 +140,14 @@ namespace ChaosExecuter.Api
                 toDateTimeOffset,
                 "ScheduledExecutionTime",
                 StorageTableNames.ScheduledRulesTableName);
+        }
+
+        private static HttpResponseMessage AttachCrossDomainHeader(HttpResponseMessage response, string origin)
+        {
+            response.Headers.Add("Access-Control-Allow-Credentials", "true");
+            response.Headers.Add("Access-Control-Allow-Origin", origin);
+            response.Headers.Add("Access-Control-Allow-Methods", "GET, OPTIONS");
+            return response;
         }
     }
 }

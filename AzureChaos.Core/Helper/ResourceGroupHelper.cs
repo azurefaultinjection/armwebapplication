@@ -12,8 +12,8 @@ namespace AzureChaos.Core.Helper
         {
             var azureClient = new AzureClient();
             var azure = azureClient.AzureInstance;
-            List<string> blackListedResourceGroupList = azureClient.AzureSettings.Chaos.BlackListedResourceGroupList;
-            List<string> inclusiveOnlyResourceGroupList = azureClient.AzureSettings.Chaos.InclusiveOnlyResourceGroupList;
+            List<string> blackListedResourceGroupList = azureClient.AzureSettings.Chaos.ExcludedResourceGroupList;
+            List<string> inclusiveOnlyResourceGroupList = azureClient.AzureSettings.Chaos.IncludedResourceGroupList;
             var resourceGroupList = azure.ResourceGroups.List();
             var resourceGroups = resourceGroupList.ToList();
             if (resourceGroups?.Count <= 0)

@@ -2,7 +2,7 @@
 
 namespace AzureChaos.Core.Models.Configs
 {
-    public class ClientConfig
+    public class TargetConfig
     {
         [JsonProperty("microsoft.chaos.client.subscription.id")]
         public string SubscriptionId { get; set; }

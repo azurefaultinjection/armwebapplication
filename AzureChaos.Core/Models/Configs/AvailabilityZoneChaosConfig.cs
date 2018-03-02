@@ -5,10 +5,10 @@ namespace AzureChaos.Core.Models.Configs
 {
     public class AvailabilityZoneChaosConfig
     {
-        [JsonProperty("microsoft.chaos.AZ.enabled")]
+        [JsonProperty("microsoft.chaos.AvZones.enabled")]
         public bool Enabled { get; set; } = false;
 
-        [JsonProperty("microsoft.chaos.AZ.regions")]
+        [JsonProperty("microsoft.chaos.AvZones.regions")]
         public List<string> Regions { get; set; } = new List<string>();
     }
 }

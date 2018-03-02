@@ -8,16 +8,9 @@ namespace AzureChaos.Core.Models.Configs
         [JsonProperty("microsoft.chaos.enabled")]
         public bool ChaosEnabled { get; set; }
 
-        [JsonProperty("microsoft.chaos.leashed")]
-        public bool Leashed { get; set; }
-
         [JsonProperty("microsoft.chaos.meantime")]
         // Donot execute chaos on the resource in mean time more than the minimum time
         public int MeanTime { get; set; }
-
-        [JsonProperty("microsoft.chaos.minimumtime")]
-        // Make sure to perform chaos not more than the minimum time on the mean time.
-        public int MinimumTime { get; set; }
 
         [JsonProperty("microsoft.chaos.scheduler.frequency")]
         public int SchedulerFrequency { get; set; }
@@ -31,12 +24,6 @@ namespace AzureChaos.Core.Models.Configs
         [JsonProperty("microsoft.chaos.crawler.frequency")]
         public int CrawlerFrequency { get; set; }
 
-        [JsonProperty("microsoft.chaos.startTime")]
-        public string StartTime { get; set; }
-
-        [JsonProperty("microsoft.chaos.endTime")]
-        public string EndTime { get; set; }
-
         [JsonProperty("microsoft.chaos.notification.global.enabled")]
         public bool NotificationEnabled { get; set; }
 
@@ -46,25 +33,22 @@ namespace AzureChaos.Core.Models.Configs
         [JsonProperty("microsoft.chaos.notification.global.receiverEmail")]
         public string ReceiverEmail { get; set; }
 
-        [JsonProperty("microsoft.chaos.blackListedResources")]
-        public List<string> BlackListedResources { get; set; }
+        [JsonProperty("microsoft.chaos.excludedResourceGroups")]
+        public List<string> ExcludedResourceGroupList { get; set; }
 
-        [JsonProperty("microsoft.chaos.blackListedResourceGroups")]
-        public List<string> BlackListedResourceGroupList { get; set; }
+        [JsonProperty("microsoft.chaos.includedResourceGroups")]
+        public List<string> IncludedResourceGroupList { get; set; }
 
-        [JsonProperty("microsoft.chaos.inclusiveOnlyResourceGroups")]
-        public List<string> InclusiveOnlyResourceGroupList { get; set; }
-
-        [JsonProperty("microsoft.chaos.AS")]
+        [JsonProperty("microsoft.chaos.AvSets")]
         public AvailabilitySetChaosConfig AvailabilitySetChaos { get; set; }
 
-        [JsonProperty("microsoft.chaos.SS")]
+        [JsonProperty("microsoft.chaos.VmSS")]
         public ScaleSetChaosConfig ScaleSetChaos { get; set; }
 
         [JsonProperty("microsoft.chaos.VM")]
         public VirtualMachineChaosConfig VirtualMachineChaos { get; set; }
 
-        [JsonProperty("microsoft.chaos.AZ")]
+        [JsonProperty("microsoft.chaos.AvZones")]
         public AvailabilityZoneChaosConfig AvailabilityZoneChaos { get; set; }
     }
 }
