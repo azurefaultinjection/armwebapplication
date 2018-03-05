@@ -1,4 +1,5 @@
-﻿using AzureChaos.Core.Models.Configs;
+﻿using AzureChaos.Core.Enums;
+using AzureChaos.Core.Models.Configs;
 using Microsoft.Azure.Management.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Authentication;
@@ -6,7 +7,7 @@ using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
 using Microsoft.WindowsAzure.Storage;
 using Newtonsoft.Json;
 using System;
-using AzureChaos.Core.Enums;
+using System.Configuration;
 
 namespace AzureChaos.Core.Models
 {
@@ -76,8 +77,12 @@ namespace AzureChaos.Core.Models
         {
             // Zen3 - string ConnectionString = "DefaultEndpointsProtocol=https;AccountName=cmnewschema;AccountKey=Txyvz6P4vUvRBOMrPo8TWE6jtm6JS7PG0+l696iOAua4ZaPXjZhzHtPuFb+Zg8nb5SQLev2flNExlEs7KoimdQ==;EndpointSuffix=core.windows.net";
             // Microsft - string ConnectionString = "DefaultEndpointsProtocol=https;AccountName=azurechaos;AccountKey=4p2a4nzUp3AytDnTm4KY3ERrNfzayowqGWJEZcitqS7fy/QOE/R/a0uT3qjjHVoH6Tb2dG3dC/qpYO4iM0cKHA==;EndpointSuffix=core.windows.net";
-            const string connectionString = "DefaultEndpointsProtocol=https;AccountName=azurechaos;AccountKey=b7yYCgyI9jg5fsRCr08tHzeic0CT5pelmpb2ZMcBaZKWhe8HdycOOs9r3luB2xygOwrbxFBnxLpysjzURKkQLQ==;EndpointSuffix=core.windows.net";
-           // const string connectionString = "DefaultEndpointsProtocol=https;AccountName=cmnewschema;AccountKey=Txyvz6P4vUvRBOMrPo8TWE6jtm6JS7PG0+l696iOAua4ZaPXjZhzHtPuFb+Zg8nb5SQLev2flNExlEs7KoimdQ==;EndpointSuffix=core.windows.net";
+            // const string connectionString = "DefaultEndpointsProtocol=https;AccountName=azurechaos;AccountKey=b7yYCgyI9jg5fsRCr08tHzeic0CT5pelmpb2ZMcBaZKWhe8HdycOOs9r3luB2xygOwrbxFBnxLpysjzURKkQLQ==;EndpointSuffix=core.windows.net";
+            // const string connectionString = "DefaultEndpointsProtocol=https;AccountName=cmnewschema;AccountKey=Txyvz6P4vUvRBOMrPo8TWE6jtm6JS7PG0+l696iOAua4ZaPXjZhzHtPuFb+Zg8nb5SQLev2flNExlEs7KoimdQ==;EndpointSuffix=core.windows.net";
+
+            // reading connection string from the local.setting.json file.
+            // add connection string (i.e. ConfigStorageConnectionString) in the azure portal app settings after the deployment. 
+            var connectionString  = ConfigurationManager.AppSettings["ConfigStorageConnectionString"];
 
             // TODO: Add to app settings of the function.
             //  const string connectionString = "UseDevelopmentStorage=true";
