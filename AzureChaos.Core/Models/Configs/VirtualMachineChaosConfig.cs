@@ -4,10 +4,10 @@ namespace AzureChaos.Core.Models.Configs
 {
     public class VirtualMachineChaosConfig
     {
-        [JsonProperty("microsoft.chaos.VM.enabled")]
+        [JsonProperty("microsoft.faultinjection.VM.enabled")]
         public bool Enabled { get; set; }
 
-        [JsonProperty("microsoft.chaos.singleInstanceVm.percentageTermination")]
+        [JsonProperty("microsoft.faultinjection.singleInstanceVm.percentageTermination")]
         public decimal PercentageTermination { get; set; }
     }
 }

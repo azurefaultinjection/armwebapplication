@@ -29,7 +29,7 @@ namespace ChaosExecuter.Crawler
         {
             log.Info("timercrawlerforavailabilitysets function processed a request.");
             var sw = Stopwatch.StartNew();//Recording
-            var resourceGroupList = ResourceGroupHelper.GetResourceGroupsInSubscription();
+            var resourceGroupList = ResourceGroupHelper.GetResourceGroupsInSubscription(log);
             if (resourceGroupList == null)
             {
                 log.Info($"timercrawlerforavailabilitysets: no resource groups to crawler");

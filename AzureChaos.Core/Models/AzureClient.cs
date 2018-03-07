@@ -4,6 +4,7 @@ using Microsoft.Azure.Management.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Authentication;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.WindowsAzure.Storage;
 using Newtonsoft.Json;
 using System;
@@ -21,11 +22,11 @@ namespace AzureChaos.Core.Models
         /// <summary>
         /// Initialize the configuration information and AzureInstance
         /// </summary>
-        public AzureClient()
+        public AzureClient(TraceWriter log = null)
         {
             try
             {
-                AzureSettings = GetAzureSettings();
+                AzureSettings = GetAzureSettings(log);
                 if (AzureSettings != null)
                 {
                     AzureInstance = GetAzure(AzureSettings.Client.ClientId, AzureSettings.Client.ClientSecret,
@@ -73,28 +74,45 @@ namespace AzureChaos.Core.Models
                             .FromServicePrincipal(clientId, clientSecret, tenantId, AzureEnvironment.AzureGlobalCloud);
         }
 
-        private static AzureSettings GetAzureSettings()
+        private static AzureSettings GetAzureSettings(TraceWriter log = null)
         {
-            // Zen3 - string ConnectionString = "DefaultEndpointsProtocol=https;AccountName=cmnewschema;AccountKey=Txyvz6P4vUvRBOMrPo8TWE6jtm6JS7PG0+l696iOAua4ZaPXjZhzHtPuFb+Zg8nb5SQLev2flNExlEs7KoimdQ==;EndpointSuffix=core.windows.net";
-            // Microsft - string ConnectionString = "DefaultEndpointsProtocol=https;AccountName=azurechaos;AccountKey=4p2a4nzUp3AytDnTm4KY3ERrNfzayowqGWJEZcitqS7fy/QOE/R/a0uT3qjjHVoH6Tb2dG3dC/qpYO4iM0cKHA==;EndpointSuffix=core.windows.net";
-            // const string connectionString = "DefaultEndpointsProtocol=https;AccountName=azurechaos;AccountKey=b7yYCgyI9jg5fsRCr08tHzeic0CT5pelmpb2ZMcBaZKWhe8HdycOOs9r3luB2xygOwrbxFBnxLpysjzURKkQLQ==;EndpointSuffix=core.windows.net";
-            // const string connectionString = "DefaultEndpointsProtocol=https;AccountName=cmnewschema;AccountKey=Txyvz6P4vUvRBOMrPo8TWE6jtm6JS7PG0+l696iOAua4ZaPXjZhzHtPuFb+Zg8nb5SQLev2flNExlEs7KoimdQ==;EndpointSuffix=core.windows.net";
+            try
+            {
 
-            // reading connection string from the local.setting.json file.
-            // add connection string (i.e. ConfigStorageConnectionString) in the azure portal app settings after the deployment. 
-            var connectionString  = ConfigurationManager.AppSettings["ConfigStorageConnectionString"];
 
-            // TODO: Add to app settings of the function.
-            //  const string connectionString = "UseDevelopmentStorage=true";
+                // Zen3 - string ConnectionString = "DefaultEndpointsProtocol=https;AccountName=cmnewschema;AccountKey=Txyvz6P4vUvRBOMrPo8TWE6jtm6JS7PG0+l696iOAua4ZaPXjZhzHtPuFb+Zg8nb5SQLev2flNExlEs7KoimdQ==;EndpointSuffix=core.windows.net";
+                // Microsft - string ConnectionString = "DefaultEndpointsProtocol=https;AccountName=azurechaos;AccountKey=4p2a4nzUp3AytDnTm4KY3ERrNfzayowqGWJEZcitqS7fy/QOE/R/a0uT3qjjHVoH6Tb2dG3dC/qpYO4iM0cKHA==;EndpointSuffix=core.windows.net";
+                // const string connectionString = "DefaultEndpointsProtocol=https;AccountName=azurechaos;AccountKey=b7yYCgyI9jg5fsRCr08tHzeic0CT5pelmpb2ZMcBaZKWhe8HdycOOs9r3luB2xygOwrbxFBnxLpysjzURKkQLQ==;EndpointSuffix=core.windows.net";
+                // const string connectionString = "DefaultEndpointsProtocol=https;AccountName=cmnewschema;AccountKey=Txyvz6P4vUvRBOMrPo8TWE6jtm6JS7PG0+l696iOAua4ZaPXjZhzHtPuFb+Zg8nb5SQLev2flNExlEs7KoimdQ==;EndpointSuffix=core.windows.net";
 
-            // TODO: Add below code to try catch & log
-            var storageAccount = CloudStorageAccount.Parse(connectionString);
+                // reading connection string from the local.setting.json file.
+                // add connection string (i.e. ConfigStorageConnectionString) in the azure portal app settings after the deployment. 
+                var connectionString = ConfigurationManager.AppSettings["ConfigStorageConnectionString"];
+                if (log != null)
+                {
+                    log.Info($"connection string {connectionString}");
+                }
+                // TODO: Add to app settings of the function.
+                //  const string connectionString = "UseDevelopmentStorage=true";
 
-            var blobClinet = storageAccount.CreateCloudBlobClient();
-            var blobContainer = blobClinet.GetContainerReference("configs");
-            var blobReference = blobContainer.GetBlockBlobReference("azuresettings.json");
-            var data = blobReference.DownloadText();
-            return JsonConvert.DeserializeObject<AzureSettings>(data);
+                // TODO: Add below code to try catch & log
+                var storageAccount = CloudStorageAccount.Parse(connectionString);
+
+                var blobClinet = storageAccount.CreateCloudBlobClient();
+                var blobContainer = blobClinet.GetContainerReference("configs");
+                var blobReference = blobContainer.GetBlockBlobReference("azuresettings.json");
+                var data = blobReference.DownloadText();
+                return JsonConvert.DeserializeObject<AzureSettings>(data);
+            }
+            catch (Exception e)
+            {
+                if (log != null)
+                {
+                    log.Error($"connection string {e}");
+                }
+
+                throw;
+            }
         }
 
         public bool IsChaosEnabledByGroup(string vmGroup)

@@ -1,5 +1,6 @@
 ﻿using AzureChaos.Core.Models;
 using Microsoft.Azure.Management.ResourceManager.Fluent;
+using Microsoft.Azure.WebJobs.Host;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,9 +9,9 @@ namespace AzureChaos.Core.Helper
 {
     public class ResourceGroupHelper
     {
-        public static List<IResourceGroup> GetResourceGroupsInSubscription()
+        public static List<IResourceGroup> GetResourceGroupsInSubscription(TraceWriter log = null)
         {
-            var azureClient = new AzureClient();
+            var azureClient = new AzureClient(log);
             var azure = azureClient.AzureInstance;
             List<string> blackListedResourceGroupList = azureClient.AzureSettings.Chaos.ExcludedResourceGroupList;
             List<string> inclusiveOnlyResourceGroupList = azureClient.AzureSettings.Chaos.IncludedResourceGroupList;
