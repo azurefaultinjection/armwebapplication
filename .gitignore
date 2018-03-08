@@ -13,3 +13,5 @@
 /AzureChaos/AzureChaos.csproj.user
 /AzureChaos.Core/AzureChaos.Core.csproj.user
 /VirtualMachineChaosExecuter/obj/Debug/net461
+/AzureFaultInjection/bin
+/AzureFaultInjection/obj/Debug

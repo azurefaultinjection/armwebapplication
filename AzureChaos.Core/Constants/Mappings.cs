@@ -30,5 +30,37 @@ namespace AzureChaos.Core.Constants
         /// Microsoft demo config file ==> https://stachaosteststorage.blob.core.windows.net/configs/azuresettings.json
 
         public const string ConfigEndpoint = "https://cmnewschema.blob.core.windows.net/configs/azuresettings.json";
+
+        public const string TargetConfigObject = "TargetConfig";
+        public const string TargetSubscriptionId = "microsoft.faultinjection.client.subscription.id";
+        public const string TargetTenantId = "microsoft.faultinjection.client.tenant.id";
+        public const string TargetClientId = "microsoft.faultinjection.client.id";
+        public const string TargetClientSecret = "microsoft.faultinjection.client.secretKey";
+        public const string TargetStorageAccount = "microsoft.faultinjection.client.storageAccount.name";
+        public const string TargetStorageConnectionString = "microsoft.faultinjection.client.storageAccount.connectionString";
+        public const string TargetResourceGroup = "microsoft.faultinjection.client.resourceGroup";
+        public const string TargetRegion = "microsoft.faultinjection.client.region";
+        public const string FaultInjectionObject = "ChaosConfig";
+        public const string SchedulerFrequency = "microsoft.faultinjection.scheduler.frequency";
+        public const string TriggerFrequency = "microsoft.faultinjection.trigger.frequency";
+        public const string CrawlerFrequency = "microsoft.faultinjection.crawler.frequency";
+        public const string RollbackFrequency = "microsoft.faultinjection.rollback.frequency";
+        public const string FaultInjectionEnable = "microsoft.faultinjection.enabled";
+        public const string MeanTime = "microsoft.faultinjection.meantime";
+        public const string ExcludedResourceGroups = "microsoft.faultinjection.excludedResourceGroups";
+        public const string IncludedResourceGroups = "microsoft.faultinjection.includedResourceGroups";
+        public const string AvZoneObject = "microsoft.faultinjection.AvZones";
+        public const string AvZoneEnabled = "microsoft.faultinjection.AvZones.enabled";
+        public const string AvZoneRegions = "microsoft.faultinjection.AvZones.regions";
+        public const string VmObject = "microsoft.faultinjection.VM";
+        public const string VmEnabled = "microsoft.faultinjection.VM.enabled";
+        public const string VmTerminationPercentage = "microsoft.faultinjection.singleInstanceVm.percentageTermination";
+        public const string VmssObject = "microsoft.faultinjection.VmSS";
+        public const string VmssEnabled = "microsoft.faultinjection.VmSS.enabled";
+        public const string VmssTerminationPercentage = "microsoft.faultinjection.VmSS.percentageTermination";
+        public const string AvSetObject = "microsoft.faultinjection.AvSets";
+        public const string AvSetEnabled = "microsoft.faultinjection.AvSets.enabled";
+        public const string AvSetFaultDomainEnabled = "microsoft.faultinjection.AvSets.faultDomain.enabled";
+        public const string AvSetUpdateDomainEnabled = "microsoft.faultinjection.AvSets.updateDomain.enabled";
     }
 }
