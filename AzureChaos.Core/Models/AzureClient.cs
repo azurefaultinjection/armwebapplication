@@ -56,7 +56,7 @@ namespace AzureChaos.Core.Models
 
         /// <summary>Get the Azure object to read the all resources from azure</summary>
         /// <returns>Returns the Azure object.</returns>
-        private static IAzure GetAzure(string clientId, string clientSecret, string tenantId, string subscriptionId)
+        public static IAzure GetAzure(string clientId, string clientSecret, string tenantId, string subscriptionId)
         {
             var azureCredentials = GetAzureCredentials(clientId, clientSecret, tenantId);
             return azureCredentials == null ? null : Azure
