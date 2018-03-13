@@ -12,6 +12,7 @@ using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Models;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
+using System;
 
 namespace AzureFaultInjection.Controllers
 {
@@ -19,7 +20,7 @@ namespace AzureFaultInjection.Controllers
     {
         private const string StorageConStringFormat = "DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1};EndpointSuffix=core.windows.net";
         private const string ResourceGroup = "AzureFaultInjection";
-        private const string StorageAccountName = "staazurefaultinjection";
+        private const string StorageAccountName = "faultinjection";
 
         // GET: api/Api
         [ActionName("getsubscriptions")]
@@ -74,11 +75,12 @@ namespace AzureFaultInjection.Controllers
                 model.TenantId,
                 model.SelectedSubscription);
             model.SelectedRegion = Region.USEast.Name;
+            model.StorageAccountName = StorageAccountName + RandomString();
             var resourceGroup =
                 ApiHelper.CreateResourceGroup(azure, ResourceGroup, model.SelectedRegion);
 
             var storage =
-                ApiHelper.CreateStorageAccount(azure, resourceGroup.Name, model.SelectedRegion, StorageAccountName);
+                ApiHelper.CreateStorageAccount(azure, resourceGroup.Name, model.SelectedRegion, model.StorageAccountName);
 
             var storageKeys = storage.GetKeys();
             model.StorageConnectionString = string.Format(StorageConStringFormat,
@@ -94,6 +96,15 @@ namespace AzureFaultInjection.Controllers
             }
 
             return true;
+        }
+
+        private static Random random = new Random();
+
+        public static string RandomString()
+        {
+            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+            return new string(Enumerable.Repeat(chars, 9)
+                .Select(s => s[random.Next(s.Length)]).ToArray()).ToLower();
         }
 
         private static void LoadStreamWithJson(Stream ms, string json)

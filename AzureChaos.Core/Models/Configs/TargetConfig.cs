@@ -25,7 +25,7 @@ namespace AzureChaos.Core.Models.Configs
         [JsonProperty("microsoft.faultinjection.client.storageAccount.name")]
         public string StorageAccountName { get; set; }
 
-        [JsonProperty("microsoft.faultinjection.client.storageAccount.key")]
+        [JsonProperty("microsoft.faultinjection.client.storageAccount.connectionString")]
         public string StorageAccountKey { get; set; }
     }
 }

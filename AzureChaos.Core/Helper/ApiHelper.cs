@@ -65,7 +65,7 @@ namespace AzureChaos.Core.Helper
                     new BlobContainerPermissions { PublicAccess = BlobContainerPublicAccessType.Blob });
 
                 // Retrieve reference to a blob named "myblob".
-                CloudBlockBlob blockBlob = container.GetBlockBlobReference("testSettings");
+                CloudBlockBlob blockBlob = container.GetBlockBlobReference("azuresettings.json");
                 blockBlob.Properties.ContentType = "application/json";
                 return blockBlob;
             }
@@ -75,6 +75,7 @@ namespace AzureChaos.Core.Helper
                 throw;
             }
         }
+
         public static string ConvertConfigObjectToString(ConfigModel queryParams)
         {
             StringBuilder sb = new StringBuilder();
