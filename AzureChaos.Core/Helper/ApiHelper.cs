@@ -91,7 +91,7 @@ namespace AzureChaos.Core.Helper
                 writer.WritePropertyName(Mappings.TargetConfigObject);
                 writer.WriteStartObject();
                 writer.WritePropertyName(Mappings.TargetSubscriptionId);
-                writer.WriteValue(queryParams.SelectedSubscription);
+                writer.WriteValue(queryParams.Subscription);
                 writer.WritePropertyName(Mappings.TargetTenantId);
                 writer.WriteValue(queryParams.TenantId);
                 writer.WritePropertyName(Mappings.TargetClientId);
@@ -109,6 +109,8 @@ namespace AzureChaos.Core.Helper
                 writer.WriteEndObject();
 
                 // fault injection config properties
+                writer.WritePropertyName(Mappings.FaultInjectionEnable);
+                writer.WriteValue(queryParams.IsChaosEnabled);
                 writer.WritePropertyName(Mappings.FaultInjectionObject);
                 writer.WriteStartObject();
                 writer.WritePropertyName(Mappings.SchedulerFrequency);
@@ -164,7 +166,7 @@ namespace AzureChaos.Core.Helper
                 writer.WritePropertyName(Mappings.AvSetObject);
                 writer.WriteStartObject();
                 writer.WritePropertyName(Mappings.AvSetEnabled);
-                writer.WriteValue(queryParams.IsAvSetsEnabled);
+                writer.WriteValue(queryParams.IsAvSetEnabled);
                 writer.WritePropertyName(Mappings.AvSetFaultDomainEnabled);
                 writer.WriteValue(queryParams.IsAvSetsFaultDomainEnabled);
                 writer.WritePropertyName(Mappings.AvSetUpdateDomainEnabled);

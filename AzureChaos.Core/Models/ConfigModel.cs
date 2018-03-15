@@ -11,19 +11,22 @@ namespace AzureChaos.Core.Models
 
         [JsonProperty("clientSecret")] public string ClientSecret { get; set; }
 
-        [JsonProperty("selectedSubscription")] public string SelectedSubscription { get; set; }
+        [JsonProperty("subscription")] public string Subscription { get; set; }
 
-        [JsonProperty("selectedDeploymentRg")] public string SelectedDeploymentRg { get; set; }
+        [JsonIgnore]
+        public string SelectedDeploymentRg { get; set; }
 
-        [JsonProperty("selectedRegion")] public string SelectedRegion { get; set; }
+        [JsonProperty("region")]
+        public string SelectedRegion { get; set; }
 
-        [JsonProperty("storageAccountName")] public string StorageAccountName { get; set; }
+        [JsonIgnore]
+        public string StorageAccountName { get; set; }
 
         public string StorageConnectionString { get; set; }
 
-        [JsonProperty("selectedExcludedRg")] public List<string> ExcludedResourceGroups { get; set; }
+        [JsonProperty("excludedResourceGroups")] public List<string> ExcludedResourceGroups { get; set; }
 
-        [JsonProperty("selectedIncludedRg")] public List<string> IncludedResourceGroups { get; set; }
+        [JsonProperty("includedResourceGroups")] public List<string> IncludedResourceGroups { get; set; }
 
         [JsonProperty("isChaosEnabled")] public bool IsChaosEnabled { get; set; }
 
@@ -37,26 +40,26 @@ namespace AzureChaos.Core.Models
 
         [JsonProperty("meanTime")] public int MeanTime { get; set; }
 
-        [JsonProperty("isAvZonesEnabled")] public bool IsAvZonesEnabled { get; set; }
+        [JsonProperty("isAvZoneEnabled")] public bool IsAvZonesEnabled { get; set; }
 
-        [JsonProperty("AvZoneRegions")] public List<string> AvZoneRegions { get; set; }
+        [JsonProperty("avZoneRegions")] public List<string> AvZoneRegions { get; set; }
 
         [JsonProperty("isVmEnabled")] public bool IsVmEnabled { get; set; }
 
-        [JsonProperty("vmTerminationPercentage")]
-        public int VmTerminationPercentage { get; set; }
+        [JsonProperty("vmPercentage")]
+        public decimal VmTerminationPercentage { get; set; }
 
         [JsonProperty("isVmssEnabled")] public bool IsVmssEnabled { get; set; }
 
-        [JsonProperty("vmssTerminationPercentage")]
-        public int VmssTerminationPercentage { get; set; }
+        [JsonProperty("vmssPercentage")]
+        public decimal VmssTerminationPercentage { get; set; }
 
-        [JsonProperty("isAvSetsEnabled")] public bool IsAvSetsEnabled { get; set; }
+        [JsonProperty("isAvSetEnabled")] public bool IsAvSetEnabled { get; set; }
 
-        [JsonProperty("isAvSetsFaultDomainEnabled")]
+        [JsonProperty("isFaultDomainEnabled")]
         public bool IsAvSetsFaultDomainEnabled { get; set; }
 
-        [JsonProperty("isAvSetsUpdateDomainEnabled")]
+        [JsonProperty("isUpdateDomainEnabled")]
         public bool IsAvSetsUpdateDomainEnabled { get; set; }
     }
 }

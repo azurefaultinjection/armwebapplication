@@ -1,5 +1,6 @@
-﻿@using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
-<form id="myWizard" type="get" class="form-horizontal easyWizardElement easyPager" method="post">
+﻿
+@using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
+<form id="myWizard" class="form-horizontal easyWizardElement easyPager" method="post">
   <section class="step" data-step-title="Authenticate" id="authenticate">
     <div class="panel-collapse collapse in">
       <div class="panel-body">
@@ -9,7 +10,8 @@
             <span style="color: red;"> *</span>
           </label>
           <div class="controls">
-            <input name="microsoft.chaos.client.tenant.id" type="text" id="inputTenantId" placeholder="Enter tenant id" class="input-xlarge">
+            <input name="tenantId" type="text" id="inputTenantId" placeholder="Enter tenant id" 
+                   class="input-xlarge" title="tenant id enter">
           </div>
         </div>
         <div class="control-group">
@@ -18,7 +20,7 @@
             <span style="color: red;"> *</span>
           </label>
           <div class="controls">
-            <input type="text" name="microsoft.chaos.client.id"  id="inputClientId" placeholder="Enter client id" class="input-xlarge">
+            <input type="text" name="clientId" id="inputClientId" placeholder="Enter client id" class="input-xlarge">
           </div>
         </div>
         <div class="control-group">
@@ -27,7 +29,7 @@
             <span style="color: red;"> *</span>
           </label>
           <div class="controls">
-            <input type="text" id="inputClientSecret" name="microsoft.chaos.client.secretKey" placeholder="Enter client secret" class="input-xlarge">
+            <input type="text" id="inputClientSecret" name="clientSecret" placeholder="Enter client secret" class="input-xlarge">
           </div>
         </div>
       </div>
@@ -42,7 +44,7 @@
             <span style="color: red;"> *</span>
           </label>
           <div class="controls">
-            <select class="dropdown" id="selectSubscription" name="microsoft.chaos.client.subscription.id"></select>
+            <select class="dropdown" id="selectSubscription" name="subscription"></select>
           </div>
         </div>
         <div class="control-group">
@@ -50,65 +52,25 @@
             Resource Group Region
             <span style="color: red;"> *</span>
           </label>
-          <div class="controls">
-            <select id="region" name="microsoft.chaos.client.region">
+          @*<div class="controls">
+            <select id="region" name="region">
               @foreach (var region in Region.Values)
               {
-                  <option value="@region.Name">@region.Name</option>
+                <option value="@region.Name">@region.Name</option>
               }
             </select>
-          </div>
+          </div>*@
         </div>
         <div class="control-group">
-          <label class="control-label" for="excludedResourceGroups" >Excluded ResourceGroups</label>
-            <div class="controls">
-              
-                <select id="excludedResourceGroups" multiple="multiple" name="microsoft.chaos.blackListedResourceGroups">
-                </select>
-            </div>
+          <label class="control-label" for="excludedResourceGroups">Excluded ResourceGroups</label>
+          <div class="controls">
+            <select id="excludedResourceGroups" multiple="multiple" name="excludedResourceGroups"></select>
+          </div>
         </div>
         <div class="control-group">
           <label class="control-label" for="includedResourceGroups">Included ResourceGroups</label>
           <div class="controls">
-              <select id="includedResourceGroups" multiple="multiple" name="microsoft.chaos.inclusiveOnlyResourceGroups">
-                  
-              </select>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-  <section class="step" data-step-title="Frequency Selection">
-    <div class="panel-collapse collapse in">
-      <div class="panel-body">
-        <div class="control-group">
-          <label class="control-label" for="schedulerFrequency">Scheduler Frequency in Minutes</label>
-          <div class="controls">
-            <input type="number" name="microsoft.chaos.scheduler.frequency" id="schedulerFrequency" value="60" />
-          </div>
-        </div>
-        <div class="control-group">
-          <label class="control-label" for="rollbackFrequency">Rollback Frequency in Minutes</label>
-          <div class="controls">
-            <input type="number" name="microsoft.chaos.rollback.frequency" id="rollbackFrequency" value="30" />
-          </div>
-        </div>
-        <div class="control-group">
-          <label class="control-label" for="triggerFrequency">Trigger Frequency in Minutes</label>
-          <div class="controls">
-            <input type="number" name="microsoft.chaos.trigger.frequency" id="triggerFrequency" value="2" />
-          </div>
-        </div>
-        <div class="control-group">
-          <label class="control-label" for="crawlerFrequency">Crawler Frequency in Minutes</label>
-          <div class="controls">
-            <input type="number" name="microsoft.chaos.crawler.frequency" id="crawlerFrequency" value="15" />
-          </div>
-        </div>
-        <div class="control-group">
-          <label class="control-label" for="meanTime">Meantime between kills in Minutes</label>
-          <div class="controls">
-            <input type="number" name="microsoft.chaos.meantime" id="meanTime" value="120" />
+            <select id="includedResourceGroups" multiple="multiple" name="includedResourceGroups"></select>
           </div>
         </div>
       </div>
@@ -124,13 +86,13 @@
           <div class="control-group">
             <label class="control-label" for="isVmEnabled">Enable</label>
             <div class="controls">
-              <input type="checkbox" name="microsoft.chaos.VM.enabled" id="isVmEnabled" />
+              <input type="checkbox" name="isVmEnabled" id="isVmEnabled" />
             </div>
           </div>
           <div class="control-group">
             <label class="control-label" for="vmTerminationPercentage">Termination(%)</label>
             <div class="controls">
-              <input type="number" name="microsoft.chaos.singleInstanceVm.percentageTermination" id="vmTerminationPercentage" value="50" />
+              <input type="number" name="vmPercentage" id="vmTerminationPercentage" value="50" />
             </div>
           </div>
         </div>
@@ -145,19 +107,19 @@
           <div class="control-group">
             <label class="control-label" for="avSetsEnabled">Enable</label>
             <div class="controls">
-              <input type="checkbox" name="microsoft.chaos.AS.enabled" id="avSetsEnabled" />
+              <input type="checkbox" name="isAvSetEnabled" id="avSetsEnabled" />
             </div>
           </div>
           <div class="control-group">
             <label class="control-label" for="faultDomain">Enable Fault Domain</label>
             <div class="controls">
-              <input type="radio"  name="microsoft.chaos.AS.domain" id="faultDomain" />
+              <input type="radio" name="isFaultDomainEnabled" id="faultDomain" />
             </div>
           </div>
           <div class="control-group">
             <label class="control-label" for="updateDomain">Enable Update Domain</label>
             <div class="controls">
-              <input type="radio"  name="microsoft.chaos.AS.domain" id="updateDomain" />
+              <input type="radio" name="isUpdateDomainEnabled" id="updateDomain" />
             </div>
           </div>
         </div>
@@ -172,13 +134,13 @@
           <div class="control-group">
             <label class="control-label" for="isAvZonesEnabled">Enable</label>
             <div class="controls">
-              <input type="checkbox" name="microsoft.chaos.AZ.enabled" id="isAvZonesEnabled" />
+              <input type="checkbox" name="isAvZoneEnabled" id="isAvZonesEnabled" />
             </div>
           </div>
           <div class="control-group hide">
             <label class="control-label" for="avZoneRegions">Zone Regions</label>
             <div class="controls">
-              <select id="avZoneRegions"></select>
+              <select id="avZoneRegions" name="avZoneRegions"></select>
             </div>
           </div>
         </div>
@@ -193,14 +155,56 @@
           <div class="control-group">
             <label class="control-label" for="vmssEnabled">Enable</label>
             <div class="controls">
-              <input type="checkbox" name="microsoft.chaos.SS.enabled" id="vmssEnabled" />
+              <input type="checkbox" name="isVmssEnabled" id="vmssEnabled" />
             </div>
           </div>
           <div class="control-group">
             <label class="control-label" for="vmssTerminationPercentage">Termination(%)</label>
             <div class="controls">
-              <input type="number" name="microsoft.chaos.SS.percentageTermination" id="vmssTerminationPercentage" value="50" />
+              <input type="number" name="vmssPercentage" id="vmssTerminationPercentage" value="50" />
             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section class="step" data-step-title="Frequency Selection">
+    <div class="panel-collapse collapse in">
+      <div class="panel-body">
+        <div class="control-group">
+          <label class="control-label" for="isChaosEnabled">Enable Azure Fault Injection</label>
+          <div class="controls">
+            <input type="checkbox" name="isChaosEnabled" id="isChaosEnabled" />
+          </div>
+        </div>
+        <div class="control-group">
+          <label class="control-label" for="schedulerFrequency">Scheduler Frequency in Minutes</label>
+          <div class="controls">
+            <input type="number" name="schedulerFrequency" id="schedulerFrequency" value="60"/>
+          </div>
+        </div>
+        <div class="control-group">
+          <label class="control-label" for="rollbackFrequency">Rollback Frequency in Minutes</label>
+          <div class="controls">
+            <input type="number" name="rollbackFrequency" id="rollbackFrequency" value="30"/>
+          </div>
+        </div>
+        <div class="control-group">
+          <label class="control-label" for="triggerFrequency">Trigger Frequency in Minutes</label>
+          <div class="controls">
+            <input type="number" name="triggerFrequency" id="triggerFrequency" value="2"/>
+          </div>
+        </div>
+        <div class="control-group">
+          <label class="control-label" for="crawlerFrequency">Crawler Frequency in Minutes</label>
+          <div class="controls">
+            <input type="number" name="crawlerFrequency" id="crawlerFrequency" value="15"/>
+          </div>
+        </div>
+        <div class="control-group">
+          <label class="control-label" for="meanTime">Meantime between kills in Minutes</label>
+          <div class="controls">
+            <input type="number" name="meanTime" id="meanTime" value="120"/>
           </div>
         </div>
       </div>
