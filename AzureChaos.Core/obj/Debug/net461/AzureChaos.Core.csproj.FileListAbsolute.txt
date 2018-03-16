@@ -94,4 +94,3 @@ B:\AzureChaosMonkey\AzureChaos.Core\obj\Debug\net461\AzureChaos.Core.AssemblyInf
 B:\AzureChaosMonkey\AzureChaos.Core\obj\Debug\net461\AzureChaos.Core.AssemblyInfo.cs
 B:\AzureChaosMonkey\AzureChaos.Core\obj\Debug\net461\AzureChaos.Core.dll
 B:\AzureChaosMonkey\AzureChaos.Core\obj\Debug\net461\AzureChaos.Core.pdb
-B:\AzureChaosMonkey\AzureChaos.Core\obj\Debug\net461\AzureChaos.Core.csprojResolveAssemblyReference.cache
