@@ -1,0 +1,161 @@
+﻿<section class="multi-step-form">
+
+  <div class="steps">
+    <button class="active tab-header" type="button" disabled>Authenticate</button> |
+    <button class="tab-header" type="button" disabled>Resource Selection</button> |
+    <button class="tab-header" type="button" disabled>Config Settings</button> |
+    <button class="tab-header" type="button" disabled>Frequency Settings</button>
+  </div>
+
+  <form action="#" method="post" id="multiwizard">
+
+    <fieldset aria-label="Step One" tabindex="-1" id="step-1">
+      <h4></h4>
+      <p>
+        <label for="tenant-id">Tenant Id</label>
+        @*<div class="input-group">*@
+        <input class="form-control" type="text" name="tenantId" id="tenant-id" required>
+        @*<button type="button" class="btn btn-secondary" data-container="tenant-id" data-toggle="popover" data-placement="top" data-content="Vivamus sagittis lacus vel augue laoreet rutrum faucibus.">
+            Popover on top
+          </button>*@
+        @*</div>*@
+      </p>
+      <p>
+        <label for="client-id">Client Id</label>
+        <input class="form-control" type="text" name="clientId" id="client-id" required>
+      </p>
+      <p>
+        <label for="client-secret">Client Secret</label>
+        <input class="form-control" type="text" name="clientSecret" id="client-secret" required>
+      </p>
+      <p>
+        <button class="btn btn-default btn-next" type="button" aria-controls="step-2">Next</button>
+      </p>
+    </fieldset>
+
+    <fieldset aria-label="Resource Selections" tabindex="-1" id="step-2">
+      <h4>Resource Selection</h4>
+      <p>
+        <label for="subscription">Subscription</label>
+        <select class="form-control" id="selectSubscription" name="subscription" required></select>
+      </p>
+      <p>
+        <label for="excluded-resource-groups">Excluded Resource Groups</label>
+        <select class="form-control" multiple="multiple" id="excluded-resource-groups" name="excludedResourceGroups" required></select>
+      </p>
+      <p>
+        <label for="included-resource-groups">Included Resource Groups</label>
+        <select class="form-control" multiple="multiple" id="included-resource-groups" name="includedResourceGroups" required></select>
+      </p>
+      <p class="button-overlap">
+        <button class="btn btn-default btn-prev" type="button" aria-controls="step-1">Previous</button>
+        <button class="btn btn-default btn-next" type="button" aria-controls="step-3">Next</button>
+      </p>
+    </fieldset>
+    <fieldset aria-label="Step Three" tabindex="-1" id="step-3">
+      <h4>Virtual Machine</h4>
+      <p>
+        <label for="vm-percentage">Termination Percentage</label>
+        <input type="number" class="form-control" value="50" name="vmPercentage" id="vm-percentage" required>
+      </p>
+      <p class="form-inline">
+        <input type="checkbox" class="form-check-input" name="isVmEnabled" id="vm-enabled">
+        <label for="vm-enabled">Enable</label>
+      </p>
+      <h4>Availability Set</h4>
+      <p class="form-inline">
+        <input type="checkbox" class="form-check-input" name="isAvSetEnabled" id="avset-enabled">
+        <label for="avset-enabled">Enable</label>
+      </p>
+      <p class="form-inline">
+        <input type="radio" class="form-check-input" name="isFaultOrUpdateDomainEnabled" id="isFaultDomainEnabled">
+        <label for="fault-domain">Enable Fault Domain</label>
+        <input type="radio" class="form-check-input" name="isFaultOrUpdateDomainEnabled" id="isUpdateDomainEnabled">
+        <label for="update-domain">Enable Update Domain</label>
+      </p>
+      <h4>Availability Zone</h4>
+      <p class="form-inline">
+        <input type="checkbox" class="form-check-input" name="isAvZoneEnabled" id="avzone-enabled">
+        <label for="avzone-enabled">Enable</label>
+      </p>
+      <h4>Virtual Machine Scale Set</h4>
+      <p>
+        <label for="vmss-percentage">Termination Percentage</label>
+        <input type="number" class="form-control" value="50" name="vmssPercentage" id="vmss-percentage" required>
+      </p>
+      <p class="form-inline">
+        <input type="checkbox" class="form-check-input" name="isVmssEnabled" id="vmss-enabled">
+        <label for="vmss-enabled">Enable</label>
+      </p>
+      <p>
+        <button class="btn btn-default btn-prev" type="button" aria-controls="step-2">Previous</button>
+        <button class="btn btn-default btn-next" type="button" aria-controls="step-4">Next</button>
+      </p>
+    </fieldset>
+    <fieldset aria-label="Step Three" tabindex="-1" id="step-4">
+      <p>
+        <label for="scheduler-frequency">Scheduler Frequency in Minutes</label>
+        <input type="number" class="form-control" value="60" name="schedulerFrequency" id="scheduler-frequency" required>
+      </p>
+      <p>
+        <label for="rollback-frequency">Rollback Frequency in Minutes</label>
+        <input type="number" class="form-control" value="30" name="rollbackFrequency" id="rollback-frequency" required>
+      </p>
+      <p>
+        <label for="trigger-frequency">Trigger Frequency in Minutes</label>
+        <input type="number" class="form-control" value="2" name="triggerFrequency" id="trigger-frequency" required>
+      </p>
+      <p>
+        <label for="crawler-frequency">Crawler Frequency in Minutes</label>
+        <input type="number" class="form-control" value="15" name="crawlerFrequency" id="crawler-frequency" required>
+      </p>
+      <p>
+        <label for="mean-time">Meantime between kills in Minutes</label>
+        <input type="number" class="form-control" name="meanTime" value="120" id="mean-time" required>
+      </p>
+      <p class="form-inline">
+        <input type="checkbox" class="form-check-input" name="isChaosEnabled" id="chaos-enabled">
+        <label for="chaos-enabled">Enable Azure Fault Injection</label>
+      </p>
+      <p>
+        <button class="btn btn-default btn-prev" type="button" aria-controls="step-3">Previous</button>
+        <button class="btn btn-success" type="submit" id="submit">Submit</button>
+        <button class="btn btn-danger" type="reset">Start Over</button>
+      </p>
+    </fieldset>
+  </form>
+</section>
+
+<!--
+HTML Requirements
+
+1. Include .multi-step-form
+2. Define parents e.g. fieldset
+3. Each parent should own a unique ID with aria-label
+4. Each next/prev button owns aria-controls which points to unique ID of parents
+5. For validation each field should own required attribute
+
+<section class="multi-step-form">
+  <form>
+
+    <fieldset aria-label="Step One" tabindex="-1" id="step-1">
+      ...
+      <button class="btn-next" type="button" aria-controls="step-2">Next</button>
+    </fieldset>
+
+    <fieldset aria-label="Step Two" tabindex="-1" id="step-2">
+      ...
+      <button class="btn-prev" type="button" aria-controls="step-1">Previous</button>
+      <button class="btn-next" type="button" aria-controls="step-3">Next</button>
+    </fieldset>
+
+    <fieldset aria-label="Step Three" tabindex="-1" id="step-3">
+      ...
+      <button type="submit">Submit</button>
+      <button class="btn-edit" type="button">Edit</button>
+      <button type="reset">Start Over</button>
+    </fieldset>
+
+  </form>
+</section>
+-->

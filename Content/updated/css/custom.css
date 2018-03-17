@@ -1,0 +1,46 @@
+﻿
+.button-overlap {
+    display: inline-block;
+    position: relative;
+    outline: none;
+}
+
+label {
+    font-weight: normal !important;
+}
+
+h4 {
+    font-weight: bold;
+}
+
+.multi-step-form {
+    margin-top: 50px;
+}
+
+.config-tab-header {
+    background-color: #555;
+    color: white;
+    border: none;
+    outline: none;
+    cursor: pointer;
+    font-size: 17px;
+}
+.current {
+    color: #000;
+}
+
+.tab-header {
+    font-size: 18px;
+    display: inline-block;
+    padding: 10px;
+    color: #B0B1B3;
+    margin-right: 20px;
+}
+.tabs {
+    position: relative;
+    overflow: hidden;
+    margin: 0 auto;
+    width: 100%;
+    font-weight: 300;
+    font-size: 1.25em;
+}
